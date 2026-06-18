@@ -29,24 +29,33 @@ jobs:
         if: always()
         run: pixi run milestones
 
-      # Publish the badge JSON to an orphan `badges` branch. Only from pushes to
-      # main (the student-facing default), so the canonical badge tracks main.
+      # Publish a PER-BRANCH badge JSON to the orphan `badges` branch, so each
+      # branch's README shows its own progress (main -> main.json 0/8,
+      # solutions -> solutions.json 8/8). The `badges` branch holds only these
+      # generated artifacts; it intentionally does not track main.
       - name: Publish milestone badge
-        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: always() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/solutions')
         run: |
-          mv milestones.json /tmp/milestones.json
+          BRANCH="${GITHUB_REF_NAME}"
+          mv milestones.json "/tmp/${BRANCH}.json"
           rm -f milestone.xml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git stash -u >/dev/null 2>&1 || true
-          if git ls-remote --exit-code --heads origin badges >/dev/null 2>&1; then
-            git fetch origin badges
-            git checkout badges
-          else
-            git checkout --orphan badges
-            git rm -rf . >/dev/null 2>&1 || true
-          fi
-          cp /tmp/milestones.json milestones.json
-          git add milestones.json
-          git diff --cached --quiet || git commit -m "Update milestone badge [skip ci]"
-          git push origin badges
+          # Push with retry: main and solutions can publish concurrently.
+          for attempt in 1 2 3 4 5; do
+            if git ls-remote --exit-code --heads origin badges >/dev/null 2>&1; then
+              git fetch origin badges
+              git checkout -B badges origin/badges
+            else
+              git checkout --orphan badges
+              git rm -rf . >/dev/null 2>&1 || true
+            fi
+            cp "/tmp/${BRANCH}.json" "${BRANCH}.json"
+            git add "${BRANCH}.json"
+            git diff --cached --quiet && break
+            git commit -m "Update ${BRANCH} milestone badge [skip ci]"
+            git push origin badges && break
+            echo "push race, retrying ($attempt)..."
+            sleep $((RANDOM % 5 + 1))
+          done
