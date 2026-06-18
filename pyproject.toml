@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mrigen"
+version = "0.1.0"
+description = "Generative priors for accelerated MRI reconstruction with uncertainty (JAX + Equinox + NumPyro)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "jax",
+    "equinox",
+    "optax",
+    "numpyro",
+    "h5py",
+    "numpy",
+    "matplotlib",
+    "scikit-image",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mrigen"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

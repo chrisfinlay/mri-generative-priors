@@ -1,0 +1,40 @@
+[workspace]
+name = "mri-generative-priors"
+version = "0.1.0"
+description = "Generative priors for accelerated MRI reconstruction with uncertainty"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "osx-64"]
+
+[tasks]
+test = "pytest -q"
+lab = "jupyter lab"
+check = "python -m mrigen.setup_check"
+download = "python data/download_subset.py"
+preprocess = "python data/preprocess.py"
+
+[dependencies]
+python = ">=3.11,<3.13"
+numpy = "*"
+h5py = "*"
+matplotlib = "*"
+scikit-image = "*"
+jupyterlab = "*"
+pytest = "*"
+
+[pypi-dependencies]
+# JAX is installed from PyPI so CUDA wheels resolve cleanly on the VMs.
+jax = ">=0.4.34"
+equinox = "*"
+optax = "*"
+numpyro = "*"
+mrigen = { path = ".", editable = true }
+
+# GPU feature: `pixi run -e gpu check` on the CUDA VMs (linux only).
+[feature.gpu]
+platforms = ["linux-64"]
+
+[feature.gpu.pypi-dependencies]
+jax = { version = ">=0.4.34", extras = ["cuda12"] }
+
+[environments]
+gpu = ["gpu"]

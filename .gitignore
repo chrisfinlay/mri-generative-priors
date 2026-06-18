@@ -1,0 +1,25 @@
+# Patient data — never commit (fastMRI Data Sharing Agreement)
+data/raw/
+data/processed/
+*.h5
+
+# Checkpoints distributed out of band (large; not data)
+checkpoints/*.eqx
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+build/
+dist/
+
+# pixi
+.pixi/
+pixi.lock
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
