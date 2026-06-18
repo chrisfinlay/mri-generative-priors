@@ -72,8 +72,7 @@ SSIM/diversity/calibration, the NumPyro MAP/NUTS drivers — is provided.
 | `05_diffusion_stretch.ipynb` | *(stretch)* diffusion prior + DPS |
 | `06_assemble_results.ipynb` | metrics tables + presentation figures |
 
-See [`project4_tutorial.md`](../project4_tutorial.md) for the full walkthrough
-and [`project4_schedule_plan.md`](../project4_schedule_plan.md) for the timeline.
+See [TUTORIAL.md](TUTORIAL.md) for the full walkthrough.
 
 ## Layout
 
