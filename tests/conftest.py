@@ -28,3 +28,23 @@ def skip_if_todo(fn):
             pytest.skip(f"TODO not implemented yet: {e}")
 
     return pytest.mark.milestone(wrapper)
+
+
+def skip_if_unimplemented(fn):
+    """Skip while any TODO the test *depends on* is unimplemented.
+
+    Unlike :func:`skip_if_todo` this does **not** add the ``milestone`` marker:
+    it is for integration tests (e.g. the end-to-end smoke test) that exercise
+    several TODOs at once. They are not themselves a single milestone, but they
+    must stay green-or-skipped on ``main`` (where the TODOs raise) and run for
+    real on ``solutions``.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except NotImplementedError as e:
+            pytest.skip(f"depends on an unimplemented TODO: {e}")
+
+    return wrapper

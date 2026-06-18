@@ -3,6 +3,10 @@ data/raw/
 data/processed/
 *.h5
 
+# Generated figures / run artifacts (no images in commits — CLAUDE.md data rules)
+outputs/
+*.png
+
 # Checkpoints distributed out of band (large; not data)
 checkpoints/*.eqx
 

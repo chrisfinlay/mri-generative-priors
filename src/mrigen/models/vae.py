@@ -113,3 +113,24 @@ def vae_loss(model: VAE, x: jnp.ndarray, key, beta: float = 1.0):
     kl = -0.5 * jnp.mean(1.0 + logvar - mu**2 - jnp.exp(logvar))
     loss = recon + beta * kl
     return loss, (recon, kl)
+
+
+def make_decoder_fn(model):
+    """Return a pure ``z -> x`` function with the decoder's parameters baked in.
+
+    GIVEN. Inference (NumPyro / `jax.jit` / `jax.grad`) needs a *pure* function
+    it can trace and differentiate. We split the decoder into arrays (its trained
+    parameters) and static structure with ``eqx.partition``, then recombine
+    inside the closure with ``eqx.combine`` (CLAUDE.md Contract 4). The returned
+    callable closes over plain arrays only, so it is safe for JIT/grad/NUTS.
+
+    Accepts the full :class:`VAE` (preferred, per the contract) or a bare
+    :class:`Decoder`.
+    """
+    decoder = model.decoder if isinstance(model, VAE) else model
+    params, static = eqx.partition(decoder, eqx.is_array)
+
+    def decode(z: jnp.ndarray) -> jnp.ndarray:
+        return eqx.combine(params, static)(z)
+
+    return decode

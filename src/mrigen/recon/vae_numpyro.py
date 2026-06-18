@@ -13,7 +13,6 @@ that JIT/NUTS can trace.
 
 from __future__ import annotations
 
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpyro
@@ -21,20 +20,7 @@ import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS, SVI, Trace_ELBO, autoguide
 
 from mrigen.fourier import fft2c
-
-
-def freeze_decoder(decoder):
-    """Split a trained Equinox decoder into (params, static). GIVEN.
-
-    Returns a pure callable ``decode(z) -> image`` safe for JIT/NUTS.
-    """
-    params, static = eqx.partition(decoder, eqx.is_array)
-
-    def decode(z):
-        dec = eqx.combine(params, static)
-        return dec(z)
-
-    return decode
+from mrigen.models.vae import make_decoder_fn
 
 
 def recon_model(y_obs, mask, decode, latent_dim, sigma):
@@ -77,7 +63,7 @@ def reconstruct_map(
 
     Returns (image, z_map).
     """
-    decode = freeze_decoder(decoder)
+    decode = make_decoder_fn(decoder)
     guide = autoguide.AutoDelta(recon_model)
     svi = SVI(recon_model, guide, numpyro.optim.Adam(lr), Trace_ELBO())
     result = svi.run(
@@ -104,7 +90,7 @@ def reconstruct_posterior(
     ``mean`` and ``std`` images (the std map is the uncertainty) and the raw
     image ``samples``.
     """
-    decode = freeze_decoder(decoder)
+    decode = make_decoder_fn(decoder)
     kernel = NUTS(recon_model)
     mcmc = MCMC(kernel, num_warmup=num_warmup, num_samples=num_samples, progress_bar=True)
     mcmc.run(jax.random.PRNGKey(seed), y_obs, mask, decode, latent_dim, sigma)
