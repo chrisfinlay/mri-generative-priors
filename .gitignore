@@ -15,9 +15,8 @@ __pycache__/
 build/
 dist/
 
-# pixi
+# pixi (lockfile is committed for reproducible envs / CI)
 .pixi/
-pixi.lock
 
 # editors / OS
 .vscode/

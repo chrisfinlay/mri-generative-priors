@@ -13,6 +13,13 @@ import pytest
 
 
 def skip_if_todo(fn):
+    """Skip while the target is a TODO, and tag it as a `milestone`.
+
+    The ``milestone`` marker lets the badge tooling count how many TODOs a team
+    has completed (``pytest -m milestone``), so the two stay in sync
+    automatically: every TODO-gated test is exactly one milestone.
+    """
+
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         try:
@@ -20,4 +27,4 @@ def skip_if_todo(fn):
         except NotImplementedError as e:
             pytest.skip(f"TODO not implemented yet: {e}")
 
-    return wrapper
+    return pytest.mark.milestone(wrapper)

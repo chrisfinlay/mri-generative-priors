@@ -28,3 +28,6 @@ packages = ["src/mrigen"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "milestone: a TODO students must implement; counted by the milestone badge",
+]

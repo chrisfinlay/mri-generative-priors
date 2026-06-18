@@ -1,8 +1,16 @@
 # mri-generative-priors
 
+[![CI](https://github.com/chrisfinlay/mri-generative-priors/actions/workflows/ci.yml/badge.svg)](https://github.com/chrisfinlay/mri-generative-priors/actions/workflows/ci.yml)
+[![Milestones](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fchrisfinlay%2Fmri-generative-priors%2Fbadges%2Fmilestones.json)](#what-you-implement-the-todos)
+
 Accelerated MRI reconstruction with a **generative prior** and **calibrated
 uncertainty**, built on **JAX + Equinox + Optax + NumPyro** and managed with
 **pixi**.
+
+> The **milestones** badge tracks how many of the `TODO`s below your team has
+> implemented (`pixi run milestones` runs the same count locally). It turns
+> green when every TODO's test passes. Forking? Update the two badge URLs above
+> to point at your own `<owner>/<repo>`.
 
 A learned prior (a β-VAE over knee slices) is plugged into a probabilistic model
 in NumPyro. Given undersampled k-space, we recover the image two ways:

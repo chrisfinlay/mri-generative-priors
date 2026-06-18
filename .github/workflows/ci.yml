@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main, solutions]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.67.0
+          cache: true
+
+      - name: Run tests
+        run: pixi run test
+
+      # Always compute the milestone count, even if the full suite is red, so
+      # the badge reflects real progress (including partial attempts).
+      - name: Compute milestone progress
+        if: always()
+        run: pixi run milestones
+
+      # Publish the badge JSON to an orphan `badges` branch. Only from pushes to
+      # main (the student-facing default), so the canonical badge tracks main.
+      - name: Publish milestone badge
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mv milestones.json /tmp/milestones.json
+          rm -f milestone.xml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git stash -u >/dev/null 2>&1 || true
+          if git ls-remote --exit-code --heads origin badges >/dev/null 2>&1; then
+            git fetch origin badges
+            git checkout badges
+          else
+            git checkout --orphan badges
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+          cp /tmp/milestones.json milestones.json
+          git add milestones.json
+          git diff --cached --quiet || git commit -m "Update milestone badge [skip ci]"
+          git push origin badges
