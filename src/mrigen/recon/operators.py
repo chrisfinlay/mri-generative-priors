@@ -23,7 +23,8 @@ def forward(x: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
 
     TODO (Team B): return the masked centred FFT of x.
     """
-    raise NotImplementedError("forward is a TODO for Team B")
+    # SOLUTION
+    return mask * fft2c(x)
 
 
 def adjoint(k: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
@@ -32,7 +33,8 @@ def adjoint(k: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
     TODO (Team B): apply the mask then the centred inverse FFT. (For a real
     magnitude image you will usually take ``.real`` downstream.)
     """
-    raise NotImplementedError("adjoint is a TODO for Team B")
+    # SOLUTION
+    return ifft2c(mask * k)
 
 
 def data_consistency(x_est: jnp.ndarray, y_obs: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
@@ -45,4 +47,7 @@ def data_consistency(x_est: jnp.ndarray, y_obs: jnp.ndarray, mask: jnp.ndarray) 
     TODO (Team B): implement the DC projection above and return the (real)
     image.
     """
-    raise NotImplementedError("data_consistency is a TODO for Team B")
+    # SOLUTION
+    k_est = fft2c(x_est)
+    k_dc = mask * y_obs + (1.0 - mask) * k_est
+    return ifft2c(k_dc).real

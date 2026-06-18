@@ -1,7 +1,7 @@
 # mri-generative-priors
 
 [![CI](https://github.com/chrisfinlay/mri-generative-priors/actions/workflows/ci.yml/badge.svg)](https://github.com/chrisfinlay/mri-generative-priors/actions/workflows/ci.yml)
-[![Milestones](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fchrisfinlay%2Fmri-generative-priors%2Fbadges%2Fmain.json)](#what-you-implement-the-todos)
+[![Milestones](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fchrisfinlay%2Fmri-generative-priors%2Fbadges%2Fsolutions.json)](#what-you-implement-the-todos)
 
 Accelerated MRI reconstruction with a **generative prior** and **calibrated
 uncertainty**, built on **JAX + Equinox + Optax + NumPyro** and managed with

@@ -35,4 +35,22 @@ def tv_fista(
     FISTA iterations (gradient step through the forward operator + soft-threshold
     of finite differences). Reference on the solutions branch.
     """
-    raise NotImplementedError("tv_fista is an optional TODO")
+    # SOLUTION: FISTA on 1/2||M F x - y||^2 + lam*||x||_1 (wavelet-free L1 proxy).
+    from mrigen.fourier import fft2c
+
+    def grad(x):
+        # gradient of the data term; F is unitary so A^H A = M (.)  in k-space.
+        return ifft2c(mask * (mask * fft2c(x) - y_obs)).real
+
+    def soft(x, thr):
+        return jnp.sign(x) * jnp.maximum(jnp.abs(x) - thr, 0.0)
+
+    x = zero_filled(y_obs, mask)
+    z = x
+    t = 1.0
+    for _ in range(n_iter):
+        x_new = soft(z - step * grad(z), lam * step)
+        t_new = 0.5 * (1.0 + jnp.sqrt(1.0 + 4.0 * t**2))
+        z = x_new + ((t - 1.0) / t_new) * (x_new - x)
+        x, t = x_new, t_new
+    return x

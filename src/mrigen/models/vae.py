@@ -94,7 +94,10 @@ def reparameterise(mu: jnp.ndarray, logvar: jnp.ndarray, key) -> jnp.ndarray:
     ``sigma = exp(0.5 * logvar)`` and ``eps ~ N(0, I)`` (use ``key``).
     Sampling z directly is not differentiable; this makes it so.
     """
-    raise NotImplementedError("reparameterise is a TODO for students")
+    # SOLUTION
+    sigma = jnp.exp(0.5 * logvar)
+    eps = jax.random.normal(key, mu.shape)
+    return mu + sigma * eps
 
 
 def vae_loss(model: VAE, x: jnp.ndarray, key, beta: float = 1.0):

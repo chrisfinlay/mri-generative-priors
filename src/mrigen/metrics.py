@@ -22,8 +22,15 @@ def psnr(gt: np.ndarray, pred: np.ndarray, data_range: float | None = None) -> f
 
     PSNR = 10 * log10(data_range**2 / MSE).
     """
-    # TODO (Team C): implement PSNR.
-    raise NotImplementedError("psnr is a TODO for Team C")
+    # SOLUTION
+    gt = np.asarray(gt, dtype=np.float64)
+    pred = np.asarray(pred, dtype=np.float64)
+    if data_range is None:
+        data_range = float(gt.max() - gt.min())
+    mse = float(np.mean((gt - pred) ** 2))
+    if mse == 0.0:
+        return float("inf")
+    return 10.0 * np.log10(data_range**2 / mse)
 
 
 def nmse(gt: np.ndarray, pred: np.ndarray) -> float:
@@ -31,8 +38,10 @@ def nmse(gt: np.ndarray, pred: np.ndarray) -> float:
 
     NMSE = ||pred - gt||^2 / ||gt||^2.
     """
-    # TODO (Team C): implement NMSE.
-    raise NotImplementedError("nmse is a TODO for Team C")
+    # SOLUTION
+    gt = np.asarray(gt, dtype=np.float64)
+    pred = np.asarray(pred, dtype=np.float64)
+    return float(np.sum((pred - gt) ** 2) / np.sum(gt**2))
 
 
 def ssim(gt: np.ndarray, pred: np.ndarray, data_range: float | None = None) -> float:

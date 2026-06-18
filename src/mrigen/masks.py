@@ -51,10 +51,12 @@ def equispaced_mask(
     Returns:
         (H, W) float array of 0./1.; entire columns are on or off.
     """
-    # TODO (Team B): build a (H, W) mask that
-    #   1) turns ON every `acceleration`-th column, and
-    #   2) turns ON the central ACS columns (use `acs_columns`).
-    raise NotImplementedError("equispaced_mask is a TODO for Team B")
+    # SOLUTION
+    h, w = shape
+    cols = np.zeros(w, dtype=np.float32)
+    cols[::acceleration] = 1.0
+    cols[acs_columns(w, acs_frac)] = 1.0
+    return jnp.asarray(np.broadcast_to(cols[None, :], (h, w)).copy())
 
 
 def random_mask(
@@ -74,8 +76,15 @@ def random_mask(
     Returns:
         (H, W) float array of 0./1.; entire columns are on or off.
     """
-    # TODO (Team B): build a (H, W) mask that
-    #   1) always keeps the central ACS columns, and
-    #   2) randomly keeps additional columns so that the *total* fraction of
-    #      kept columns is approximately 1/acceleration.
-    raise NotImplementedError("random_mask is a TODO for Team B")
+    # SOLUTION
+    h, w = shape
+    rng = np.random.default_rng(seed)
+    acs = acs_columns(w, acs_frac)
+    cols = np.zeros(w, dtype=np.float32)
+    cols[acs] = 1.0
+    n_target = int(round(w / acceleration))
+    n_extra = max(0, n_target - len(acs))
+    candidates = np.setdiff1d(np.arange(w), acs)
+    chosen = rng.choice(candidates, size=min(n_extra, len(candidates)), replace=False)
+    cols[chosen] = 1.0
+    return jnp.asarray(np.broadcast_to(cols[None, :], (h, w)).copy())

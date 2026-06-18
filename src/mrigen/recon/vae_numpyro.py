@@ -58,7 +58,16 @@ def recon_model(y_obs, mask, decode, latent_dim, sigma):
         numpyro.sample("y_re", dist.Normal(k.real, sigma).mask(obs), obs=y_obs.real)
         numpyro.sample("y_im", dist.Normal(k.imag, sigma).mask(obs), obs=y_obs.imag)
     """
-    raise NotImplementedError("recon_model body is a TODO for Team B")
+    # SOLUTION
+    # NB: the mask is a *traced* array inside NUTS/SVI, so boolean indexing
+    # (`k.real[obs]`) raises NonConcreteBooleanIndexError. Use `.mask(obs)` to
+    # zero out the log-likelihood at unsampled k-space locations instead.
+    z = numpyro.sample("z", dist.Normal(jnp.zeros(latent_dim), 1.0))
+    x = decode(z)
+    k = mask * fft2c(x)
+    obs = mask.astype(bool)
+    numpyro.sample("y_re", dist.Normal(k.real, sigma).mask(obs), obs=y_obs.real)
+    numpyro.sample("y_im", dist.Normal(k.imag, sigma).mask(obs), obs=y_obs.imag)
 
 
 def reconstruct_map(
