@@ -44,17 +44,19 @@ def recon_model(y_obs, mask, decode, latent_dim, sigma):
         1) sample ``z`` from a standard Normal of size ``latent_dim``;
         2) decode it to an image ``x``;
         3) form the forward measurement ``k = mask * fft2c(x)``;
-        4) observe the real and imaginary parts of the sampled k-space with a
-           Normal(., sigma) likelihood, conditioned on ``y_obs`` at the sampled
-           locations (use ``mask.astype(bool)``).
+        4) observe the real and imaginary parts of the k-space with a
+           Normal(., sigma) likelihood, restricting it to the sampled locations.
+           The mask is a *traced* array under NUTS/SVI, so boolean indexing
+           (`k.real[obs]`) raises NonConcreteBooleanIndexError -- use
+           ``dist.Normal(...).mask(obs)`` over the full array instead.
 
     Reference (reveal if stuck):
         z = numpyro.sample("z", dist.Normal(jnp.zeros(latent_dim), 1.0))
         x = decode(z)
         k = mask * fft2c(x)
         obs = mask.astype(bool)
-        numpyro.sample("y_re", dist.Normal(k.real[obs], sigma), obs=y_obs.real[obs])
-        numpyro.sample("y_im", dist.Normal(k.imag[obs], sigma), obs=y_obs.imag[obs])
+        numpyro.sample("y_re", dist.Normal(k.real, sigma).mask(obs), obs=y_obs.real)
+        numpyro.sample("y_im", dist.Normal(k.imag, sigma).mask(obs), obs=y_obs.imag)
     """
     raise NotImplementedError("recon_model body is a TODO for Team B")
 
