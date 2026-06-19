@@ -1,9 +1,9 @@
 """Tests for metrics: PSNR/NMSE are TODO (Team C); SSIM/diversity are given."""
 
 import numpy as np
+from conftest import skip_if_todo
 
 from mrigen import metrics
-from conftest import skip_if_todo
 
 
 @skip_if_todo

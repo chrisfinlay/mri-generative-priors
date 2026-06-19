@@ -31,7 +31,10 @@ def main() -> None:
 
     try:
         loss, (recon, kl) = vae_loss(model, x, lk, beta=1.0)
-        print(f"1-step VAE forward OK: loss={float(loss):.4f} recon={float(recon):.4f} kl={float(kl):.4f}")
+        print(
+            f"1-step VAE forward OK: loss={float(loss):.4f} "
+            f"recon={float(recon):.4f} kl={float(kl):.4f}"
+        )
     except NotImplementedError as e:
         print(f"VAE loss not runnable yet (expected on day 1): {e}")
         print("-> implement reparameterise() in src/mrigen/models/vae.py")

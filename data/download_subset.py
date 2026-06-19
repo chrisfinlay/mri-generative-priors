@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
 import sys
 import tarfile
 import tempfile
@@ -35,7 +34,7 @@ def download(n: int) -> None:
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         archive = Path(tmp) / "singlecoil_val.tar.gz"
-        print(f"downloading archive (this may take a while)...")
+        print("downloading archive (this may take a while)...")
         urllib.request.urlretrieve(url, archive)
 
         print("extracting first", n, "volumes...")

@@ -11,6 +11,7 @@ where the TODOs still raise, and runs for real on ``solutions``.
 import jax
 import jax.numpy as jnp
 import numpy as np
+from conftest import skip_if_unimplemented
 
 from mrigen.masks import equispaced_mask
 from mrigen.metrics import psnr
@@ -18,7 +19,6 @@ from mrigen.models.vae import VAE, make_decoder_fn
 from mrigen.recon.classical import zero_filled
 from mrigen.recon.operators import forward
 from mrigen.recon.vae_numpyro import reconstruct_map
-from conftest import skip_if_unimplemented
 
 LATENT = 128
 
@@ -34,9 +34,9 @@ def test_map_beats_zero_filled_on_synthetic():
 
     mask = equispaced_mask((128, 128), acceleration=4)
     sigma = 0.02
-    nk = jax.random.PRNGKey(2)
     noise = sigma * (
-        jax.random.normal(nk, (128, 128)) + 1j * jax.random.normal(jax.random.PRNGKey(3), (128, 128))
+        jax.random.normal(jax.random.PRNGKey(2), (128, 128))
+        + 1j * jax.random.normal(jax.random.PRNGKey(3), (128, 128))
     )
     y = forward(x, mask) + mask * noise
 

@@ -31,3 +31,20 @@ testpaths = ["tests"]
 markers = [
     "milestone: a TODO students must implement; counted by the milestone badge",
 ]
+
+[tool.ruff]
+line-length = 100
+# Notebooks are teaching material with intentionally loose, cell-by-cell style.
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+# Default rules (pyflakes + a pycodestyle subset) plus explicit line-length (E501)
+# and import sorting (I).
+extend-select = ["E501", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# On `main` these modules import FFT/distribution helpers that their stubbed
+# TODO bodies don't use yet; students (and the solutions branch) use them once
+# the TODO is implemented. Don't flag them as unused imports.
+"src/mrigen/recon/operators.py" = ["F401"]
+"src/mrigen/recon/vae_numpyro.py" = ["F401"]

@@ -76,7 +76,10 @@ def train(
             model, opt_state, loss, (recon, kl) = _train_step(
                 model, opt_state, batch, sk, optim, beta
             )
-            ep_loss += float(loss); ep_recon += float(recon); ep_kl += float(kl); n += 1
+            ep_loss += float(loss)
+            ep_recon += float(recon)
+            ep_kl += float(kl)
+            n += 1
         print(
             f"epoch {epoch:3d}  loss {ep_loss / n:.4f}  "
             f"recon {ep_recon / n:.4f}  kl {ep_kl / n:.4f}"
