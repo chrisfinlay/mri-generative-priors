@@ -4,8 +4,12 @@ Reads a **per-user** download link from the FASTMRI_VAL_URL environment
 variable (see data/REGISTER_FIRST.md). This script never bundles data and never
 hard-codes a link, per the Data Sharing Agreement.
 
-    export FASTMRI_VAL_URL="https://<your-personal-link>/knee_singlecoil_val.tar.gz"
+    export FASTMRI_VAL_URL="https://<your-personal-link>/knee_singlecoil_val.tar.xz"
     python data/download_subset.py --n 5
+
+It **streams** the archive and stops after extracting ``n`` volumes, so you only
+transfer/decompress as much as you need — not the whole 15 GB. Works for both
+``.tar.gz`` and ``.tar.xz`` (compression is auto-detected).
 """
 
 from __future__ import annotations
@@ -14,7 +18,6 @@ import argparse
 import os
 import sys
 import tarfile
-import tempfile
 import urllib.request
 from pathlib import Path
 
@@ -32,22 +35,24 @@ def download(n: int) -> None:
         )
 
     RAW_DIR.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory() as tmp:
-        archive = Path(tmp) / "singlecoil_val.tar.gz"
-        print("downloading archive (this may take a while)...")
-        urllib.request.urlretrieve(url, archive)
+    print(f"streaming archive, keeping the first {n} volume(s)...")
 
-        print("extracting first", n, "volumes...")
-        with tarfile.open(archive) as tar:
-            members = [m for m in tar.getmembers() if m.name.endswith(".h5")]
-            members.sort(key=lambda m: m.name)
-            for m in members[:n]:
-                m.name = Path(m.name).name  # flatten into raw/
-                tar.extract(m, RAW_DIR)
-                print("  ->", RAW_DIR / m.name)
+    kept = 0
+    # Stream (mode "r|*"): read the archive sequentially from the network and
+    # stop early — no full download, no full decompression.
+    with urllib.request.urlopen(url) as resp:  # noqa: S310 (user-supplied DSA link)
+        with tarfile.open(fileobj=resp, mode="r|*") as tar:
+            for member in tar:
+                if not member.name.endswith(".h5"):
+                    continue
+                member.name = Path(member.name).name  # flatten into raw/
+                tar.extract(member, RAW_DIR, filter="data")
+                kept += 1
+                print("  ->", RAW_DIR / member.name)
+                if kept >= n:
+                    break
 
-    kept = sorted(RAW_DIR.glob("*.h5"))
-    print(f"done: {len(kept)} volume(s) in {RAW_DIR}")
+    print(f"done: {kept} volume(s) in {RAW_DIR}")
     print("next: python data/preprocess.py")
 
 
