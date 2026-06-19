@@ -186,9 +186,12 @@ def recon_model(y_obs, mask, decoder, latent_dim, sigma):
     x = decoder(z)                       # prior pushforward (real image)
     k = mask * fft2c(x)                  # forward operator A(x)
     obs = mask.astype(bool)
-    # TODO: observe real & imaginary parts of the measured k-space
-    numpyro.sample("y_re", dist.Normal(k.real[obs], sigma), obs=y_obs.real[obs])
-    numpyro.sample("y_im", dist.Normal(k.imag[obs], sigma), obs=y_obs.imag[obs])
+    # TODO: observe real & imaginary parts of the measured k-space.
+    # The mask is a *traced* array under NUTS/SVI, so boolean indexing
+    # (k.real[obs]) raises NonConcreteBooleanIndexError — restrict the
+    # likelihood with .mask(obs) over the full array instead.
+    numpyro.sample("y_re", dist.Normal(k.real, sigma).mask(obs), obs=y_obs.real)
+    numpyro.sample("y_im", dist.Normal(k.imag, sigma).mask(obs), obs=y_obs.imag)
 ```
 
 > `decoder` must be a **pure** function for inference — it's built with

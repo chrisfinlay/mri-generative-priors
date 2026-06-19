@@ -20,6 +20,9 @@ jobs:
           pixi-version: v0.67.0
           cache: true
 
+      - name: Lint
+        run: pixi run lint
+
       - name: Run tests
         run: pixi run test
 

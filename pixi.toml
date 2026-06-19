@@ -7,6 +7,7 @@ platforms = ["linux-64", "osx-arm64", "osx-64"]
 
 [tasks]
 test = "pytest -q"
+lint = "ruff check ."
 slice = "python scripts/smoke_slice.py"
 milestones = "python scripts/milestone_badge.py"
 lab = "jupyter lab"
@@ -22,6 +23,7 @@ matplotlib = "*"
 scikit-image = "*"
 jupyterlab = "*"
 pytest = "*"
+ruff = "*"
 
 [pypi-dependencies]
 # JAX is installed from PyPI so CUDA wheels resolve cleanly on the VMs.

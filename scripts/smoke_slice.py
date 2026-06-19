@@ -90,7 +90,8 @@ def main() -> None:
         for batch in data_loader(data, batch_size=32, seed=args.seed + epoch):
             key, sk = jax.random.split(key)
             model, opt_state, loss = step(model, opt_state, jnp.asarray(batch), sk)
-            ep += float(loss); nb += 1
+            ep += float(loss)
+            nb += 1
         if epoch % 10 == 0 or epoch == args.epochs - 1:
             print(f"  epoch {epoch:3d}  loss {ep / nb:.4f}")
 
@@ -102,12 +103,16 @@ def main() -> None:
     x = decode(jax.random.normal(jax.random.PRNGKey(args.seed + 11), (args.latent_dim,)))
     mask = equispaced_mask((128, 128), args.acceleration)
     sigma = 0.01
-    nk = jax.random.PRNGKey(args.seed + 99)
-    noise = sigma * (jax.random.normal(nk, (128, 128)) + 1j * jax.random.normal(jax.random.PRNGKey(7), (128, 128)))
+    noise = sigma * (
+        jax.random.normal(jax.random.PRNGKey(args.seed + 99), (128, 128))
+        + 1j * jax.random.normal(jax.random.PRNGKey(7), (128, 128))
+    )
     y = forward(x, mask) + mask * noise
 
     x_zf = zero_filled(y, mask)
-    x_map, _ = reconstruct_map(y, mask, model.decoder, args.latent_dim, sigma=sigma, steps=600, lr=2e-2)
+    x_map, _ = reconstruct_map(
+        y, mask, model.decoder, args.latent_dim, sigma=sigma, steps=600, lr=2e-2
+    )
 
     dr = float(x.max() - x.min())
     p_zf = psnr(np.asarray(x), np.asarray(x_zf), data_range=dr)
@@ -124,9 +129,12 @@ def main() -> None:
         (ax[1], x_zf, f"zero-filled ({p_zf:.1f} dB)"),
         (ax[2], x_map, f"MAP ({p_map:.1f} dB)"),
     ):
-        a.imshow(np.asarray(img), cmap="gray", vmin=0, vmax=vmax); a.set_title(title); a.axis("off")
+        a.imshow(np.asarray(img), cmap="gray", vmin=0, vmax=vmax)
+        a.set_title(title)
+        a.axis("off")
     ax[3].imshow(np.abs(np.asarray(x_map) - np.asarray(x)), cmap="inferno")
-    ax[3].set_title("|error| (MAP)"); ax[3].axis("off")
+    ax[3].set_title("|error| (MAP)")
+    ax[3].axis("off")
     fig.suptitle(f"Vertical slice on synthetic data — R={args.acceleration}")
     fig.tight_layout()
     fig.savefig(OUT, dpi=130, bbox_inches="tight")

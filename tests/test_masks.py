@@ -2,9 +2,9 @@
 
 import jax.numpy as jnp
 import numpy as np
+from conftest import skip_if_todo, skip_if_unimplemented
 
 from mrigen.masks import acs_columns, equispaced_mask, random_mask
-from conftest import skip_if_todo, skip_if_unimplemented
 
 
 @skip_if_todo
