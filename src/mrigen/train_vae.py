@@ -6,6 +6,10 @@ and load the pre-trained ``checkpoints/vae_128.eqx`` instead (see CHECKPOINTS.md
 
 Usage:
     python -m mrigen.train_vae --data data/processed --epochs 50 --beta 1.0
+
+Trains on ``split="train"`` by default, i.e. without the held-out volumes in
+``mrigen.data.HELDOUT_VOLUMES`` -- so that ``FastMRISlices(split="test")`` is a
+fair evaluation set for the resulting checkpoint.
 """
 
 from __future__ import annotations
@@ -58,12 +62,16 @@ def train(
     lr: float = 1e-3,
     seed: int = 0,
     out: str = "checkpoints/vae_128.eqx",
+    split: str | None = "train",
 ) -> VAE:
+    """Train the beta-VAE prior. ``split="train"`` keeps the held-out volumes out."""
     key = jax.random.PRNGKey(seed)
     model_key, key = jax.random.split(key)
     model = VAE(latent_dim=latent_dim, key=model_key)
 
-    dataset = FastMRISlices(data_dir)
+    dataset = FastMRISlices(data_dir, split=split)
+    print(f"training on {len(dataset)} slices from {len(dataset.volumes)} volume(s) "
+          f"(split={split!r})")
     optim = optax.adam(lr)
     opt_state = optim.init(eqx.filter(model, eqx.is_array))
 
@@ -99,6 +107,7 @@ def main():
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--out", default="checkpoints/vae_128.eqx")
+    p.add_argument("--split", default="train", help="'train' (default), 'test', or 'all'")
     args = p.parse_args()
     train(
         args.data,
@@ -108,6 +117,7 @@ def main():
         batch_size=args.batch_size,
         lr=args.lr,
         out=args.out,
+        split=None if args.split == "all" else args.split,
     )
 
 

@@ -2,7 +2,7 @@
 
 Mixed given / TODO.
 
-TODO (Team C): ``psnr`` and ``nmse`` -- two-line formulas, build confidence and
+TODO (evaluation thread): ``psnr`` and ``nmse`` -- two-line formulas, build confidence and
 force you to think about what "reconstruction error" means.
 
 GIVEN: ``ssim`` (delegates to scikit-image), ``diversity`` (mean pairwise SSIM

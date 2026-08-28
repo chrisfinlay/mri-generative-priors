@@ -1,8 +1,9 @@
 """Normalisation round-trip tests (GIVEN; CLAUDE.md Contract 2)."""
 
 import numpy as np
+import pytest
 
-from mrigen.data import denormalise, normalise
+from mrigen.data import FastMRISlices, denormalise, normalise
 
 
 def test_normalise_to_unit_range():
@@ -38,3 +39,30 @@ def test_scale_applied_identically_train_and_recon():
     recon_norm = x_norm                     # a perfect [0, 1] reconstruction
     recon = denormalise(recon_norm, scale)  # recon-time, same scale
     assert np.allclose(recon, x, atol=1e-4)
+
+
+def _shards(tmp_path):
+    rng = np.random.default_rng(0)
+    for name, n in (("file_a", 3), ("file_b", 2), ("file_c", 4)):
+        np.savez(tmp_path / f"{name}.npz", slices=rng.random((n, 8, 8)).astype(np.float32))
+    return tmp_path
+
+
+def test_split_holds_out_named_volumes(tmp_path):
+    root = _shards(tmp_path)
+    everything = FastMRISlices(root)
+    train = FastMRISlices(root, split="train", heldout=("file_b",))
+    test = FastMRISlices(root, split="test", heldout=("file_b",))
+    assert len(everything) == 9 and len(train) == 7 and len(test) == 2
+    assert train.volumes == ["file_a", "file_c"] and test.volumes == ["file_b"]
+    assert list(train.volume_index) == [0, 0, 0, 1, 1, 1, 1]
+    # train and test are disjoint
+    assert not np.any(np.all(train.slices[:, None] == test.slices[None], axis=(2, 3)))
+
+
+def test_split_errors_are_helpful(tmp_path):
+    root = _shards(tmp_path)
+    with pytest.raises(ValueError):
+        FastMRISlices(root, split="validation")
+    with pytest.raises(FileNotFoundError, match="Held-out volumes"):
+        FastMRISlices(root, split="test", heldout=("file_missing",))
