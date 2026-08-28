@@ -1,4 +1,4 @@
-"""Tests for the forward operator and data consistency (TODO, Team B)."""
+"""Tests for the forward operator and data consistency (TODO, reconstruction thread)."""
 
 import jax.numpy as jnp
 import numpy as np

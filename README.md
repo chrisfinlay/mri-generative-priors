@@ -52,17 +52,19 @@ Plumbing is given; **you implement the lines that teach the idea.** A
 `solutions` branch carries a reference for every TODO — mentors reveal per
 milestone if a team is stuck.
 
-| File | Owner | What |
+| File | Thread | What |
 |------|-------|------|
-| `src/mrigen/masks.py` | Team B | Cartesian undersampling masks (+ ACS band) |
-| `src/mrigen/recon/operators.py` | Team B | forward `A(x)=M⊙F(x)`, adjoint, data consistency |
-| `src/mrigen/models/vae.py` | all | the reparameterisation trick |
-| `src/mrigen/recon/vae_numpyro.py` | Team B | the NumPyro `recon_model` body |
-| `src/mrigen/metrics.py` | Team C | PSNR, NMSE |
-| `src/mrigen/recon/classical.py` | optional | TV/L1 FISTA baseline |
+| `src/mrigen/masks.py` | reconstruction | Cartesian undersampling masks (+ ACS band) |
+| `src/mrigen/recon/operators.py` | reconstruction | forward `A(x)=M⊙F(x)`, adjoint, data consistency |
+| `src/mrigen/models/vae.py` | everyone | the reparameterisation trick |
+| `src/mrigen/recon/vae_numpyro.py` | reconstruction | the NumPyro `recon_model` body |
+| `src/mrigen/metrics.py` | evaluation | PSNR, NMSE |
+| `src/mrigen/recon/classical.py` | optional (evaluation) | TV/L1 FISTA baseline |
 
 Everything else — `fourier.py`, the VAE architecture + training loop, `viz.py`,
-SSIM/diversity/calibration, the NumPyro MAP/NUTS drivers — is provided.
+SSIM/diversity/calibration, the NumPyro MAP/NUTS drivers, the held-out split, the
+power-spectrum prior and the model-agnostic evaluation (`evaluate.py`) — is
+provided.
 
 ## Milestone map
 
@@ -74,14 +76,41 @@ SSIM/diversity/calibration, the NumPyro MAP/NUTS drivers — is provided.
 | `03_recon_map.ipynb` | **MAP reconstruction (Wednesday deliverable)** |
 | `04_recon_posterior.ipynb` | NUTS posterior + uncertainty maps |
 | `05_diffusion_stretch.ipynb` | *(stretch)* diffusion prior + DPS |
-| `06_assemble_results.ipynb` | metrics tables + presentation figures |
+| `06_evaluate_models.ipynb` | **evaluate every model on one protocol** (held-out split, table, curve, calibration, worst case) |
 
 See [TUTORIAL.md](TUTORIAL.md) for the full walkthrough.
+
+## How we'll work at the school
+
+**Three threads, not three teams.** The work has three parts — the *prior*
+(notebooks 01–02), the *reconstruction* (03–04) and the *evaluation* (06) — and
+the Friday talk follows them. With five people, everyone does the whole path:
+
+- **Mon–Wed, one path for all.** Notebook 00 → load the checkpoint → a MAP
+  reconstruction of *your own* slice at *your own* R that beats zero-filled
+  (the Wednesday deliverable, five times over). Work in pairs; pairs rotate at
+  every 17:30 stand-up.
+- **Thursday, split by depth.** Each pair or person goes deep on one thread
+  and reports on it Friday: the NUTS posterior and uncertainty maps; the
+  evaluation and calibration; a second model (TV/L1, the power-spectrum prior,
+  the diffusion or complex-image stretch) through the same evaluation.
+- **Evaluation is shared.** Every model goes through `06_evaluate_models.ipynb`;
+  each person owns one row of the final table.
+
+**A lead for each day.** One student leads each day, Mon–Fri, so everyone leads
+once (the rota is volunteered on Monday morning). The lead's job is about half an
+hour of the day: a five-minute kickoff (today's milestone, who pairs with whom);
+keeping the critical path visible and calling the mentor when a pair has been
+stuck for 45 minutes; running the 17:30 stand-up (done / blocked / next, every
+pair speaks, lead summarises); and five lines in `LOG.md` — date, lead, what
+shipped, what broke, the decision for tomorrow. Friday's lead runs the rehearsal
+and keeps time in the talk. The mentor coaches the lead rather than running the
+room.
 
 ## Layout
 
 ```
-src/mrigen/        # library: fourier, masks, data, models, recon, metrics, viz
+src/mrigen/        # library: fourier, masks, data, models, recon, metrics, evaluate, viz
 data/              # REGISTER_FIRST + downloader + preprocessing (no data committed)
 notebooks/         # 00–06, the guided path
 checkpoints/       # pre-trained weights (not data)

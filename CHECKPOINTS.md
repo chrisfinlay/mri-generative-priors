@@ -12,7 +12,7 @@ safe to redistribute under the fastMRI Data Sharing Agreement.
 | Resolution | 128 × 128 magnitude |
 | Latent dim | 128 |
 | β | 1.0 |
-| Training data | ~1–2k knee magnitude slices (`knee_singlecoil_val`) |
+| Training data | knee magnitude slices from `knee_singlecoil_val`, **train split only** — the volumes in `mrigen.data.HELDOUT_VOLUMES` (`file1000593`, `file1002067`, the first two in the archive) were excluded |
 | Optimiser | Adam, lr 1e-3 |
 | Held-out recon PSNR / SSIM | _fill in after pre-training_ |
 
@@ -24,7 +24,9 @@ vae = load_model("checkpoints/vae_128.eqx", latent_dim=128)
 ```
 
 Compare your own training run against these numbers — if you can beat them by
-tuning β / latent dim / epochs, even better.
+tuning β / latent dim / epochs, even better. Train with
+`python -m mrigen.train_vae` (it uses `split="train"` by default) and **evaluate
+only on `FastMRISlices(split="test")`** — see `06_evaluate_models.ipynb`.
 
 ## `score_128.eqx` *(stretch)*
 

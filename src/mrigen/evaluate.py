@@ -116,14 +116,21 @@ def map_recon(decoder, latent_dim, steps: int = 1000, lr: float = 1e-2, seed: in
 
 
 def posterior_recon(
-    decoder, latent_dim, num_samples: int = 200, num_warmup: int = 200, seed: int = 0
+    decoder, latent_dim, num_samples: int = 200, num_warmup: int = 200, seed: int = 0,
+    max_tree_depth: int = 10,
 ):
-    """NUTS posterior through a decoder: mean, per-pixel std, and the samples."""
+    """NUTS posterior through a decoder: mean, per-pixel std, and the samples.
+
+    NUTS is the expensive method: up to ``2**max_tree_depth - 1`` decoder evaluations
+    per sample. On a CPU, use few samples and ``max_tree_depth`` 6-7; on the GPU
+    server, the defaults.
+    """
 
     def recon(y_obs, mask, sigma) -> Recon:
         out = reconstruct_posterior(
             y_obs, mask, decoder, latent_dim, sigma=sigma,
             num_samples=num_samples, num_warmup=num_warmup, seed=seed,
+            max_tree_depth=max_tree_depth,
         )
         return Recon(
             mean=np.asarray(out["mean"]),
@@ -248,7 +255,9 @@ def evaluate(
                 done = [r for r in res.rows if r["slice"] == label and r["R"] == R]
                 print(
                     f"slice {label:>14}  R={R} (eff {r_eff:.1f})  "
-                    + "  ".join(f"{r['method']} {r['psnr']:.1f} dB" for r in done)
+                    + "  ".join(
+                        f"{r['method']} {r['psnr']:.1f} dB ({r['seconds']:.0f}s)" for r in done
+                    )
                 )
     return res
 

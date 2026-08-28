@@ -1,4 +1,4 @@
-"""Shape / acceleration tests for Cartesian masks (TODO, Team B)."""
+"""Shape / acceleration tests for Cartesian masks (TODO, reconstruction thread)."""
 
 import jax.numpy as jnp
 import numpy as np

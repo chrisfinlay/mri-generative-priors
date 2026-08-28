@@ -9,7 +9,7 @@ Bayesian reconstruction — in one dimension — so that Monday afternoon starts
 
 | Week of | Rung | Do | Done when |
 |---|---|---|---|
-| 24 Aug | **0 · Set up** | Register at [fastmri.med.nyu.edu](https://fastmri.med.nyu.edu/) *today* (approval takes time). Install [pixi](https://pixi.sh/), clone this repo, `pixi install`, `pixi run check`, `pixi run test`. | `pixi run test` says **12 passed, 10 skipped** — the skips are yours to turn green |
+| 24 Aug | **0 · Set up** | Register at [fastmri.med.nyu.edu](https://fastmri.med.nyu.edu/) *today* (approval takes time). Install [pixi](https://pixi.sh/), clone this repo, `pixi install`, `pixi run check`, `pixi run test`. | `pixi run test` says **20 passed, 11 skipped** — the skips are yours to turn green |
 | 31 Aug | **1 · NumPy → JAX** | `notebooks/prep/01_numpy_to_jax.ipynb`, then implement `psnr` and `nmse` in `src/mrigen/metrics.py` | `pixi run milestones` says **2/8** |
 | 7 Sep | **2 · Fourier & k-space** | `notebooks/prep/02_fourier_and_kspace.ipynb`, then `masks.py` and `recon/operators.py` | `pixi run milestones` says **8/8** |
 | 14 Sep | **3 · Bayes by hand** | `notebooks/prep/03_bayes_by_hand.ipynb` — prior, likelihood, posterior, MAP, uncertainty, all on a grid | three checks print OK; you can say what MAP vs posterior mean is |
