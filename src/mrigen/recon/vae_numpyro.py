@@ -83,15 +83,18 @@ def reconstruct_posterior(
     num_samples=200,
     num_warmup=200,
     seed=0,
+    max_tree_depth=10,
 ):
     """Posterior reconstruction via NUTS over z, with pixel-wise UQ. GIVEN.
 
     Keep ``latent_dim`` around 128-256 so the sampler mixes. Returns a dict with
     ``mean`` and ``std`` images (the std map is the uncertainty) and the raw
-    image ``samples``.
+    image ``samples``. ``max_tree_depth`` bounds the leapfrog steps per sample
+    (NumPyro's default is 10, i.e. up to 1023 decoder evaluations per sample);
+    lower it to 6-7 on a CPU, at some cost in mixing.
     """
     decode = make_decoder_fn(decoder)
-    kernel = NUTS(recon_model)
+    kernel = NUTS(recon_model, max_tree_depth=max_tree_depth)
     mcmc = MCMC(kernel, num_warmup=num_warmup, num_samples=num_samples, progress_bar=True)
     mcmc.run(jax.random.PRNGKey(seed), y_obs, mask, decode, latent_dim, sigma)
     zs = mcmc.get_samples()["z"]
