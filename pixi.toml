@@ -24,6 +24,7 @@ scikit-image = "*"
 jupyterlab = "*"
 pytest = "*"
 ruff = "*"
+ipywidgets = ">=8.1.9,<9"
 
 [pypi-dependencies]
 # JAX is installed from PyPI so CUDA wheels resolve cleanly on the VMs.
