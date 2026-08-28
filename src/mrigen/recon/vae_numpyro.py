@@ -1,6 +1,6 @@
 """VAE-prior reconstruction in NumPyro: MAP (SVI) and posterior (NUTS).
 
-Skeleton GIVEN; the ``recon_model`` body is the TODO (Team B). This is the
+Skeleton GIVEN; the ``recon_model`` body is the TODO (reconstruction thread). This is the
 worked example from the probabilistic-programming lecture: put a standard normal
 prior on the latent z, push it through the frozen decoder to get an image, apply
 the forward operator, and place a Gaussian likelihood on the *observed* k-space
@@ -26,7 +26,7 @@ from mrigen.models.vae import make_decoder_fn
 def recon_model(y_obs, mask, decode, latent_dim, sigma):
     """NumPyro model: z ~ N(0, I); x = decode(z); Gaussian likelihood on k-space.
 
-    TODO (Team B): implement the four lines
+    TODO (reconstruction thread): implement the four lines
         1) sample ``z`` from a standard Normal of size ``latent_dim``;
         2) decode it to an image ``x``;
         3) form the forward measurement ``k = mask * fft2c(x)``;
