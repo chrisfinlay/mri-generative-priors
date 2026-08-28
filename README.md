@@ -26,6 +26,10 @@ interferometry workflow exactly, with a centred FFT in place of the NUFFT.
 > [`data/REGISTER_FIRST.md`](data/REGISTER_FIRST.md), register individually, and
 > accept the Data Sharing Agreement. No patient data is committed to this repo.
 
+> 🪜 **New to JAX or Bayesian inference?** Start with [`PREP.md`](PREP.md): five short
+> notebooks in `notebooks/prep/`, one a week before the school, that end with the whole
+> project done in one dimension. The repo's `TODO`s are folded in as milestones.
+
 ## Quickstart
 
 ```bash
