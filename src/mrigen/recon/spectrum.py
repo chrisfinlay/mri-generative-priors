@@ -15,10 +15,12 @@ There are two ways to plug a model into this repo, and this file shows both:
    and ``latent_dim=(2, H, W)`` to ``reconstruct_map`` and MAP runs unchanged.
 2. **As a standalone reconstructor** with a closed-form posterior -- the Wiener
    filter. With a Gaussian likelihood on the observed k-space and a diagonal
-   Gaussian prior in k-space, every frequency decouples::
+   Gaussian prior in k-space, every frequency decouples. ``sigma`` is the noise
+   std *per real/imaginary component* (matching ``recon_model``), so the complex
+   noise variance is ``2 sigma^2`` and::
 
-       observed   k:  mean = P / (P + sigma^2) * y,   var = P sigma^2 / (P + sigma^2)
-       unobserved k:  mean = 0,                       var = P
+       observed   k:  mean = P / (P + 2 sigma^2) * y,   var = 2 P sigma^2 / (P + 2 sigma^2)
+       unobserved k:  mean = 0,                         var = P
 
    (We treat the image as complex and take the real part; the real-valued
    version couples each frequency with its mirror and is a good stretch.)
@@ -73,19 +75,19 @@ def wiener_reconstruct(y_obs, mask, P, sigma: float, *, n_samples: int = 0, key=
         mask: ``{0, 1}`` sampling mask ``(H, W)``.
         P: power spectrum ``(H, W)`` from :func:`estimate_power_spectrum`.
         sigma: noise std of the measurement (per real/imag component).
-        n_samples: if > 0, also draw posterior samples (needs ``key``) and
-            estimate the per-pixel std from them; otherwise return the analytic
-            (spatially constant) std.
+        n_samples: if > 1, also draw posterior samples (needs ``key``) and
+            estimate the per-pixel std from them; with 0 or 1 samples the
+            analytic (spatially constant) std is kept instead.
 
     Returns:
         dict with ``mean`` (H, W), ``std`` (H, W) and ``samples`` (N, H, W) or None.
     """
     P = jnp.asarray(P)
     mask = jnp.asarray(mask)
-    s2 = sigma**2
-    gain = P / (P + s2)                                   # Wiener shrinkage of observed entries
-    mean_k = mask * gain * y_obs                          # unobserved -> prior mean 0
-    var_k = jnp.where(mask > 0, P * s2 / (P + s2), P)     # per-frequency posterior variance
+    s2c = 2.0 * sigma**2                            # complex noise variance (sigma per part)
+    gain = P / (P + s2c)                                    # Wiener shrinkage of observed entries
+    mean_k = mask * gain * y_obs                            # unobserved -> prior mean 0
+    var_k = jnp.where(mask > 0, P * s2c / (P + s2c), P)     # per-frequency posterior variance
     mean = ifft2c(mean_k).real
 
     # Real part of a unitary transform of independent complex Gaussians: each pixel gets
@@ -94,7 +96,7 @@ def wiener_reconstruct(y_obs, mask, P, sigma: float, *, n_samples: int = 0, key=
     std = jnp.full_like(mean, const_std)
 
     samples = None
-    if n_samples > 0:
+    if n_samples > 1:                       # one sample has std 0 everywhere; keep the analytic std
         if key is None:
             key = jax.random.PRNGKey(0)
         k1, k2 = jax.random.split(key)

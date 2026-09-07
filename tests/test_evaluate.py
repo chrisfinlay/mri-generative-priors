@@ -80,3 +80,22 @@ def test_sweep_zero_filled_vs_zeros_with_calibration():
     assert len(ms) <= 5 and np.allclose(ms, 0.3)
     assert res.worst["zero-filled"]["R"] == 4  # worst case is at the highest acceleration
     assert "| zero-filled |" in ev.table(res.rows)
+
+
+def test_plot_handles_partial_acceleration_series():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    row = {"slice": "0", "R_eff": 3.3, "psnr": 30.0, "ssim": 0.9, "nmse": 0.01,
+           "seconds": 0.1, "has_std": False}
+    rows = [
+        {**row, "method": "a", "R": 4}, {**row, "method": "a", "R": 8},
+        {**row, "method": "b", "R": 8, "psnr": 25.0},   # b has no R=4 row
+    ]
+    fig, ax = plt.subplots()
+    ev.plot_metric_vs_R(rows, "psnr", ax=ax)
+    xdata = [tuple(np.asarray(ln.get_xdata()).tolist())
+             for ln in ax.get_lines() if len(ln.get_xdata())]
+    assert (8.0,) in xdata, "a method with only R=8 must be plotted at R=8, not shifted to R=4"
+    plt.close(fig)

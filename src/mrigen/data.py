@@ -7,7 +7,9 @@ locally from their own fastMRI download (see data/REGISTER_FIRST.md).
 
 **Held-out split.** A prior must be evaluated on slices it never saw. Volumes
 named in :data:`HELDOUT_VOLUMES` are the *test* split; everything else is
-*train*. The pre-trained checkpoint was trained with ``split="train"`` (see
+*train*. (Deliberately no third validation split for a one-week school; if you
+tune hyperparameters hard, know you are tuning on the training volumes.) The
+pre-trained checkpoint was trained with ``split="train"`` (see
 CHECKPOINTS.md), so ``FastMRISlices(root, split="test")`` gives you slices that
 are held out from the checkpoint too. Train on "train", tune on "train",
 report numbers on "test" -- and say so in your table.
