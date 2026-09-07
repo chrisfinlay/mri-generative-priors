@@ -71,3 +71,41 @@ def test_wiener_shrinks_noise_and_reports_constant_std():
     analytic = wiener_reconstruct(y, mask, P, sigma)["std"]
     assert bool(jnp.allclose(analytic, analytic.mean(), atol=1e-6))  # spatially constant
     assert abs(float(out["std"].mean()) - float(analytic.mean())) < 0.5 * float(analytic.mean())
+
+
+def test_wiener_matches_hand_derived_posterior():
+    # Hand-derived per-frequency posterior with sigma per real/imag component:
+    # gain = P / (P + 2 sigma^2). Hermitian-symmetric y and mask keep everything real,
+    # so fft2c(mean) recovers mean_k exactly and the gain is testable per frequency.
+    n, sigma = 8, 0.5
+    P = jnp.full((n, n), 3 * 2 * sigma**2)      # P = 3x complex noise var -> gain 0.75
+    rng = np.random.default_rng(5)
+    real_img = jnp.asarray(rng.standard_normal((n, n)), dtype=jnp.float32)
+    y = fft2c(real_img)                          # Hermitian by construction
+    mask = np.ones((n, n), np.float32)
+    c = n // 2
+    for a, b in [(1, 3), (6, 2)]:                    # knock out symmetric pairs (Hermitian mask)
+        mask[a, b] = 0.0
+        mask[(2 * c - a) % n, (2 * c - b) % n] = 0.0
+    mask = jnp.asarray(mask)
+
+    out = wiener_reconstruct(mask * y, mask, P, sigma)
+    mean_k = fft2c(out["mean"])
+    gain = 0.75
+    assert bool(jnp.allclose(mean_k, mask * gain * y, atol=1e-4)), "gain must be P/(P + 2 sigma^2)"
+
+    # analytic std: sqrt(sum(var_k) / (2 N)) with var_k = 2 P s2 /(P + 2 s2) observed, P unobserved
+    s2c = 2 * sigma**2
+    Pn, mn = np.asarray(P), np.asarray(mask)
+    var_k = np.where(mn > 0, Pn * s2c / (Pn + s2c), Pn)
+    expected_std = np.sqrt(var_k.sum() / (2 * var_k.size))
+    assert abs(float(out["std"].mean()) - expected_std) < 1e-4
+
+
+def test_wiener_single_sample_keeps_analytic_std():
+    x = _phantoms()
+    P = estimate_power_spectrum(x)
+    mask = jnp.ones(x.shape[1:])
+    y = mask * fft2c(jnp.asarray(x[0]))
+    out = wiener_reconstruct(y, mask, P, 0.05, n_samples=1, key=jax.random.PRNGKey(0))
+    assert float(out["std"].min()) > 0, "one sample must not produce a zero uncertainty map"

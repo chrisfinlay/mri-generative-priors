@@ -10,7 +10,8 @@ where :class:`Recon` carries ``mean`` (H, W) and, if the method has them,
 are below; a new model -- a diffusion prior, a power-spectrum prior, a classical
 solver, anything -- joins the comparison with an adapter of the same shape.
 
-The protocol (what :func:`evaluate` enforces, and what your table must state):
+The protocol (what :func:`evaluate` standardises, and what your table must state
+-- the held-out slices are yours to supply; it cannot check where an array came from):
 
 * **held-out slices only** -- ``FastMRISlices(root, split="test")``, never
   slices the prior was trained on;
@@ -311,9 +312,10 @@ def plot_metric_vs_R(rows, metric: str = "psnr", ax=None):
     methods = list(dict.fromkeys(r["method"] for r in rows))
     accs = sorted({r["R"] for r in rows})
     for m in methods:
-        mu = [s[(m, R)][metric][0] for R in accs if (m, R) in s]
-        sd = [s[(m, R)][metric][1] for R in accs if (m, R) in s]
-        ax.errorbar(accs[: len(mu)], mu, yerr=sd, marker="o", capsize=3, label=m)
+        present = [R for R in accs if (m, R) in s]
+        mu = [s[(m, R)][metric][0] for R in present]
+        sd = [s[(m, R)][metric][1] for R in present]
+        ax.errorbar(present, mu, yerr=sd, marker="o", capsize=3, label=m)
     ax.set_xlabel("acceleration R (nominal)")
     ax.set_ylabel(metric)
     ax.set_xticks(accs)
@@ -330,7 +332,12 @@ def calibration(results: Results, method: str, n_bins: int = 10):
 
 
 def plot_calibration(results: Results, methods=None, n_bins: int = 10, ax=None):
-    """Calibration curves for every method with a std; the diagonal is perfect calibration."""
+    """Calibration curves for every method with a std, against the Gaussian reference.
+
+    For a calibrated zero-mean Gaussian error the mean **absolute** error in a bin is
+    ``sqrt(2/pi) ~ 0.8`` of the predicted std, so the reference line has that slope,
+    not 1.
+    """
     import matplotlib.pyplot as plt
 
     ax = ax or plt.gca()
@@ -340,7 +347,8 @@ def plot_calibration(results: Results, methods=None, n_bins: int = 10, ax=None):
         s, e = calibration(results, m, n_bins)
         ax.plot(s, e, "o-", label=m)
         hi = max(hi, float(s.max()), float(e.max()))
-    ax.plot([0, hi], [0, hi], "k:", lw=1, label="perfect")
+    k = float(np.sqrt(2.0 / np.pi))
+    ax.plot([0, hi], [0, k * hi], "k:", lw=1, label="perfect (√(2/π) · std)")
     ax.set_xlabel("predicted std (bin mean)")
     ax.set_ylabel("actual |error| (bin mean)")
     ax.legend()
