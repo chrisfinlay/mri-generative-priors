@@ -1,6 +1,6 @@
 """VAE-prior reconstruction in NumPyro: MAP (SVI) and posterior (NUTS).
 
-Skeleton GIVEN; the ``recon_model`` body is the TODO (Team B). This is the
+Skeleton GIVEN; the ``recon_model`` body is the TODO (reconstruction thread). This is the
 worked example from the probabilistic-programming lecture: put a standard normal
 prior on the latent z, push it through the frozen decoder to get an image, apply
 the forward operator, and place a Gaussian likelihood on the *observed* k-space
@@ -26,7 +26,7 @@ from mrigen.models.vae import make_decoder_fn
 def recon_model(y_obs, mask, decode, latent_dim, sigma):
     """NumPyro model: z ~ N(0, I); x = decode(z); Gaussian likelihood on k-space.
 
-    TODO (Team B): implement the four lines
+    TODO (reconstruction thread): implement the four lines
         1) sample ``z`` from a standard Normal of size ``latent_dim``;
         2) decode it to an image ``x``;
         3) form the forward measurement ``k = mask * fft2c(x)``;
@@ -74,15 +74,18 @@ def reconstruct_posterior(
     num_samples=200,
     num_warmup=200,
     seed=0,
+    max_tree_depth=10,
 ):
     """Posterior reconstruction via NUTS over z, with pixel-wise UQ. GIVEN.
 
     Keep ``latent_dim`` around 128-256 so the sampler mixes. Returns a dict with
     ``mean`` and ``std`` images (the std map is the uncertainty) and the raw
-    image ``samples``.
+    image ``samples``. ``max_tree_depth`` bounds the leapfrog steps per sample
+    (NumPyro's default is 10, i.e. up to 1023 decoder evaluations per sample);
+    lower it to 6-7 on a CPU, at some cost in mixing.
     """
     decode = make_decoder_fn(decoder)
-    kernel = NUTS(recon_model)
+    kernel = NUTS(recon_model, max_tree_depth=max_tree_depth)
     mcmc = MCMC(kernel, num_warmup=num_warmup, num_samples=num_samples, progress_bar=True)
     mcmc.run(jax.random.PRNGKey(seed), y_obs, mask, decode, latent_dim, sigma)
     zs = mcmc.get_samples()["z"]

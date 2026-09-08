@@ -72,8 +72,7 @@ the **zero-filled** image — full of aliasing. This is your baseline to beat.
 > **Radio analogy.** This is the *dirty image*: the true sky convolved with the
 > dirty beam. Same maths, same artefacts.
 
-**Tasks:** plot `|k|` (log) and `|x|`; build a mask at R = 4 (`masks.py` TODO,
-Team B); produce and plot the zero-filled recon. *See the aliasing.*
+**Tasks:** plot `|k|` (log) and `|x|`; build a mask at R = 4 (`masks.py` TODO); produce and plot the zero-filled recon. *See the aliasing.*
 
 ---
 
@@ -150,7 +149,7 @@ latent dimension, β, training length. **If training is slow, load
 
 ### 3.4 Evaluating the prior (`02_evaluate_prior.ipynb`)
 
-- **Quality:** do samples look like knees? (Eyeball + the slide checklist.)
+- **Quality:** do samples look like knees? (Eyeball, then the visual checklist in Part 5.)
 - **Diversity:** pairwise SSIM across samples (low = diverse); latent
   interpolations should morph smoothly.
 - **Speed:** time per sample — matters when you compare to diffusion later.
@@ -178,7 +177,7 @@ p(x | y) ∝ p(y | x) · p(x)
 We **infer the latent `z`, not the image.** This bakes the prior in (every `z`
 decodes to a plausible image) and shrinks a million-pixel problem to ~128 dims.
 
-### 4.2 The model (NumPyro) — your TODO in `recon/vae_numpyro.py`
+### 4.2 The model (NumPyro) — the `recon_model` TODO in `recon/vae_numpyro.py`
 
 ```python
 def recon_model(y_obs, mask, decoder, latent_dim, sigma):
@@ -236,22 +235,91 @@ error, and uncertainty maps; sweep R ∈ {4, 8, 16}.
 
 ---
 
-## Part 5 — Evaluation · `06_assemble_results.ipynb` (Team C, ongoing)
+## Part 5 — Evaluation: one protocol for every model · `06_evaluate_models.ipynb`
 
-Two questions, two kinds of metric:
+Evaluation is not a final step; it is how you know whether anything you built
+works, and it is what the Friday talk is made of. The rule that makes it worth
+doing: **every method is judged on exactly the same problem.** `mrigen.evaluate`
+enforces that, and it is model-agnostic — the methods in this repo and any model
+you add go through it identically.
 
-- **Reconstruction quality (quantitative):** PSNR, SSIM, NMSE vs the
-  fully-sampled ground truth, as a function of acceleration, across three methods
-  — zero-filled, classical TV/L1, the deep prior. One table + one curve.
-- **Reconstruction quality (qualitative/medical):** does the recon preserve the
-  structures a clinician cares about? Look at **error maps**, not just numbers —
-  a high PSNR can still smear a small but important feature.
-- **Uncertainty calibration:** bin pixels by predicted std, plot mean error per
-  bin. Good UQ ⇒ error rises with uncertainty.
-- **Prior intrinsics:** quality / diversity / speed from Part 3.
+### 5.1 The interface: a reconstructor
 
-(`PSNR`/`NMSE` are your TODOs in `metrics.py`, Team C; SSIM, diversity, and
-calibration helpers are provided.)
+```python
+recon(y_obs, mask, sigma) -> ev.Recon(mean, std=None, samples=None)
+```
+
+That is all a method has to be. Adapters for the repo's methods ship in
+`evaluate.py` (`zero_filled_recon`, `tv_recon`, `wiener_recon`, `map_recon`,
+`posterior_recon`); a new model needs a three-line adapter of the same shape.
+`map_recon` / `posterior_recon` take *any* decoder — a VAE, a diffusion model
+with a deterministic sampler, the power-spectrum decoder — so a prior with a
+decoder needs no adapter at all.
+
+### 5.2 The protocol (say it in the talk)
+
+1. **Held-out slices only** — `FastMRISlices(root, split="test")`. The volumes in
+   `mrigen.data.HELDOUT_VOLUMES` are excluded from the checkpoint's training and
+   must be excluded from yours. Numbers on training slices are not results.
+2. **Same mask, same noise draw, same σ for every method**, seeded per (slice, R).
+3. **PSNR, SSIM, NMSE** against the fully-sampled truth, `data_range = 1`.
+4. **Effective acceleration** `R_eff = M.size / M.sum()` in every table header —
+   the ACS band makes a nominal 4× about 3.3×.
+5. **Seconds per reconstruction**, measured after a warm-up call (JIT).
+6. **Calibration** for every method with a `std`: pool the pixels over slices, bin
+   by predicted std, plot actual |error| per bin against the diagonal.
+7. **Mean ± std over slices.** A difference smaller than the ± is "comparable".
+8. **The worst case**, per method, as a panel — show one in the talk.
+
+### 5.3 Two kinds of quality
+
+- **Quantitative (statistical):** the table and the PSNR-vs-R curve, across
+  zero-filled, TV/L1, the power-spectrum prior, and the deep prior (MAP and
+  posterior mean). Where does each win, and by more than the spread?
+- **Qualitative (clinical):** look at error maps, not just numbers — a high PSNR
+  can still smear a small structure that matters. The visual checklist:
+  anatomy preserved (bone edges, cartilage surfaces, menisci, ligaments)?
+  residual aliasing, ringing, blur? **hallucinated** structure that is not in
+  the truth? does the uncertainty map light up where the error is?
+
+### 5.4 Uncertainty: is it honest?
+
+A per-pixel std is only useful if it is *calibrated*. Expect two things: the
+power-spectrum prior's std is flat (a stationary prior cannot say *where* it is
+unsure), and the VAE posterior is **overconfident** — the decoder cannot
+represent a held-out slice exactly, and the model has no term for "my prior
+cannot make this image", so it reports tight error bars around the nearest
+image it *can* make. That is model misspecification; name it, don't hide it.
+(You met it in one dimension in prep notebook 5.)
+
+### 5.5 Adding a model — and comparing it fairly
+
+Route A, a prior with a decoder: write a pure `decode(z)`, pick the latent
+shape, hand both to `map_recon` / `posterior_recon`. Route B, a method that is
+its own algorithm (DPS, an unrolled network, a classical solver): write the
+adapter. Then:
+
+1. fit it on `split="train"` only, and state what it saw;
+2. run it on the **same** slices, R and σ as everyone else — one `methods` dict,
+   one `evaluate` call;
+3. report `R_eff`, seconds and the ± next to the others; include it in the
+   calibration plot if it has a std, and say so if it does not;
+4. show its worst case;
+5. evaluate the **prior itself** (notebook 02): sample quality, diversity
+   (mean pairwise 1 − SSIM), time per sample. A prior can win on reconstruction
+   and lose on diversity; both are results.
+
+The worked example is the **power-spectrum prior** (`recon/spectrum.py`): a
+stationary Gaussian whose spectrum is learnt from the training slices in one
+line, used both as a decoder for `recon_model` and as a closed-form Wiener
+reconstructor. It teaches the lesson every new model should be measured
+against: a prior that is diagonal in k-space cannot fill in k-space it never
+measured, so it barely beats zero-filling — de-aliasing needs a prior that
+couples frequencies, i.e. knows about spatial structure (sparsity, or a
+learned decoder).
+
+(`PSNR`/`NMSE` are your TODOs in `metrics.py`; SSIM, diversity and calibration
+helpers are provided.)
 
 ---
 

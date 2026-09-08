@@ -1,6 +1,6 @@
 """Forward operator, adjoint, and data-consistency projection.
 
-TODO (Team B). Short, central, conceptual -- this is the heart of the inverse
+TODO (reconstruction thread). Short, central, conceptual -- this is the heart of the inverse
 problem. The measurement model is
 
     A(x) = M . F(x)          (undersampled k-space of image x)
@@ -21,7 +21,7 @@ from mrigen.fourier import fft2c, ifft2c
 def forward(x: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
     """A(x) = mask * fft2c(x): image -> undersampled k-space.
 
-    TODO (Team B): return the masked centred FFT of x.
+    TODO (reconstruction thread): return the masked centred FFT of x.
     """
     raise NotImplementedError("forward is a TODO for Team B")
 
@@ -29,7 +29,7 @@ def forward(x: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
 def adjoint(k: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
     """A^H(k) = ifft2c(mask * k): undersampled k-space -> image.
 
-    TODO (Team B): apply the mask then the centred inverse FFT. (For a real
+    TODO (reconstruction thread): apply the mask then the centred inverse FFT. (For a real
     magnitude image you will usually take ``.real`` downstream.)
     """
     raise NotImplementedError("adjoint is a TODO for Team B")
@@ -42,7 +42,7 @@ def data_consistency(x_est: jnp.ndarray, y_obs: jnp.ndarray, mask: jnp.ndarray) 
         ifft2c( mask * y_obs + (1 - mask) * fft2c(x_est) )
     i.e. keep the measured entries, trust the model elsewhere.
 
-    TODO (Team B): implement the DC projection above and return the (real)
+    TODO (reconstruction thread): implement the DC projection above and return the (real)
     image.
     """
     raise NotImplementedError("data_consistency is a TODO for Team B")
