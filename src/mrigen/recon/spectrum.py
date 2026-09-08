@@ -82,6 +82,8 @@ def wiener_reconstruct(y_obs, mask, P, sigma: float, *, n_samples: int = 0, key=
     Returns:
         dict with ``mean`` (H, W), ``std`` (H, W) and ``samples`` (N, H, W) or None.
     """
+    if sigma < 0:
+        raise ValueError(f"sigma must be non-negative, got {sigma}")
     P = jnp.asarray(P)
     mask = jnp.asarray(mask)
     s2c = 2.0 * sigma**2                            # complex noise variance (sigma per part)
