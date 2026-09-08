@@ -1,6 +1,6 @@
 """Cartesian undersampling masks.
 
-TODO (Team B). This is where you internalise what "accelerating the scan"
+TODO (reconstruction thread). This is where you internalise what "accelerating the scan"
 means: a Cartesian MRI scan acquires k-space one phase-encode line (one
 column) at a time, so we accelerate by *skipping columns*. We always keep a
 fully-sampled block of central columns -- the auto-calibration signal (ACS) --

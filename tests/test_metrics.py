@@ -1,4 +1,4 @@
-"""Tests for metrics: PSNR/NMSE are TODO (Team C); SSIM/diversity are given."""
+"""Tests for metrics: PSNR/NMSE are TODO (evaluation thread); SSIM/diversity are given."""
 
 import numpy as np
 from conftest import skip_if_todo
