@@ -31,7 +31,7 @@ def acs_columns(width: int, acs_frac: float) -> np.ndarray:
 
     Returns the integer column indices of the fully-sampled centre band.
     """
-    n_acs = max(1, int(round(acs_frac * width)))
+    n_acs = max(1, round(acs_frac * width))
     start = (width - n_acs) // 2
     return np.arange(start, start + n_acs)
 

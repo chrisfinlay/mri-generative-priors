@@ -46,6 +46,25 @@ pixi run test                      # shape / round-trip tests
 If GPU training is slow, skip it: a pre-trained `checkpoints/vae_128.eqx`
 ships with the repo (see [`CHECKPOINTS.md`](CHECKPOINTS.md)).
 
+### Running on a GPU
+
+The default environment is CPU-only. On a Linux machine with an NVIDIA GPU
+(recent driver installed — check with `nvidia-smi`), use the `gpu` environment
+by adding `-e gpu` to any task:
+
+```bash
+pixi run -e gpu check              # should print JAX devices: [CudaDevice(id=0)]
+pixi run -e gpu lab                # JupyterLab with GPU-enabled JAX
+pixi run -e gpu test
+```
+
+The first `-e gpu` command downloads the CUDA libraries (a few GB) into
+`.pixi/envs/gpu`; after that it's cached. Everything — including the CUDA build
+of jaxlib — comes from conda-forge, so no `pip`, `conda activate`, or system
+CUDA toolkit is needed. If `check` prints `[CpuDevice(id=0)]` instead, JAX
+could not see the GPU: make sure you passed `-e gpu` and that `nvidia-smi`
+works. cuDNN is pinned below 9.11 so older (Pascal/Volta) GPUs still work.
+
 ## What you implement (the `TODO`s)
 
 Plumbing is given; **you implement the lines that teach the idea.** A
