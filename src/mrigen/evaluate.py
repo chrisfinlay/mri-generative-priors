@@ -63,6 +63,8 @@ def measure(x, mask, sigma: float, key) -> jnp.ndarray:
     Noise is complex Gaussian with std ``sigma`` per real/imag component, drawn from
     ``key`` -- so the same ``key`` gives every method the same measurement.
     """
+    if sigma < 0:
+        raise ValueError(f"sigma must be non-negative, got {sigma}")
     x = jnp.asarray(x)
     k1, k2 = jax.random.split(key)
     noise = sigma * (jax.random.normal(k1, x.shape) + 1j * jax.random.normal(k2, x.shape))
@@ -212,6 +214,8 @@ def evaluate(
 
         mask_fn = equispaced_mask
     images = np.asarray(images, dtype=np.float32)
+    if images.ndim != 3 or len(images) == 0:
+        raise ValueError(f"images must be a non-empty (N, H, W) stack, got shape {images.shape}")
     res = Results()
     warmed = set()
     for i, x in enumerate(images):

@@ -99,3 +99,58 @@ def test_plot_handles_partial_acceleration_series():
              for ln in ax.get_lines() if len(ln.get_xdata())]
     assert (8.0,) in xdata, "a method with only R=8 must be plotted at R=8, not shifted to R=4"
     plt.close(fig)
+
+
+def test_sweep_machinery_runs_even_while_metrics_are_todos(monkeypatch):
+    # Exercise rows/pooling/worst-case/timing on the student branch too, by standing in
+    # for the psnr/nmse TODOs. The real-metrics path is covered by the test above.
+    monkeypatch.setattr(ev.metrics, "psnr",
+                        lambda gt, pred, data_range=1.0: -float(np.mean((gt - pred) ** 2)))
+    monkeypatch.setattr(ev.metrics, "nmse", lambda gt, pred: float(np.mean((gt - pred) ** 2)))
+    imgs = _images(2)
+    res = ev.evaluate({"zero-filled": ev.zero_filled_recon}, imgs, (2,), sigma=0.01,
+                      mask_fn=_mask_fn, verbose=False)
+    assert len(res.rows) == 2 and all(r["seconds"] >= 0 for r in res.rows)
+    assert res.worst["zero-filled"]["slice"] in ("0", "1")
+    assert "| zero-filled |" in ev.table(res.rows)
+
+
+def test_max_tree_depth_reaches_nuts(monkeypatch):
+    from mrigen.recon import vae_numpyro as vn
+
+    captured = {}
+
+    class FakeNUTS:
+        def __init__(self, model, max_tree_depth=10, **kw):
+            captured["depth"] = max_tree_depth
+
+    class FakeMCMC:
+        def __init__(self, kernel, **kw):
+            pass
+
+        def run(self, *a, **k):
+            pass
+
+        def get_samples(self):
+            return {"z": jnp.zeros((3, 4))}
+
+    monkeypatch.setattr(vn, "NUTS", FakeNUTS)
+    monkeypatch.setattr(vn, "MCMC", FakeMCMC)
+
+    def decoder(z):
+        return jnp.zeros((8, 8)) + z.sum()
+
+    out = vn.reconstruct_posterior(jnp.zeros((8, 8), jnp.complex64), jnp.ones((8, 8)),
+                                   decoder, 4, max_tree_depth=6)
+    assert captured["depth"] == 6
+    assert out["mean"].shape == (8, 8) and out["std"].shape == (8, 8)
+
+
+def test_evaluate_rejects_bad_inputs():
+    import pytest
+
+    with pytest.raises(ValueError):
+        ev.evaluate({"zf": ev.zero_filled_recon}, np.zeros((0, 8, 8), np.float32), (2,),
+                    mask_fn=_mask_fn, verbose=False)
+    with pytest.raises(ValueError):
+        ev.measure(jnp.zeros((8, 8)), jnp.ones((8, 8)), -0.5, jax.random.PRNGKey(0))

@@ -70,7 +70,7 @@ def test_wiener_shrinks_noise_and_reports_constant_std():
     assert out["samples"].shape == (64,) + x.shape[1:]
     analytic = wiener_reconstruct(y, mask, P, sigma)["std"]
     assert bool(jnp.allclose(analytic, analytic.mean(), atol=1e-6))  # spatially constant
-    assert abs(float(out["std"].mean()) - float(analytic.mean())) < 0.5 * float(analytic.mean())
+    assert abs(float(out["std"].mean()) - float(analytic.mean())) < 0.25 * float(analytic.mean())
 
 
 def test_wiener_matches_hand_derived_posterior():
@@ -109,3 +109,32 @@ def test_wiener_single_sample_keeps_analytic_std():
     y = mask * fft2c(jnp.asarray(x[0]))
     out = wiener_reconstruct(y, mask, P, 0.05, n_samples=1, key=jax.random.PRNGKey(0))
     assert float(out["std"].min()) > 0, "one sample must not produce a zero uncertainty map"
+
+
+def test_decoder_reproduces_the_spectrum_per_bin():
+    # P estimated from real images is Hermitian-symmetric, so the real-part decoder's
+    # samples must reproduce it bin by bin (including the self-conjugate DC/Nyquist bins).
+    x = _phantoms(n=16, size=16)
+    P = estimate_power_spectrum(x)
+    decode = make_spectrum_decoder(P)
+    w = jax.random.normal(jax.random.PRNGKey(2), (512, 2, 16, 16))
+    emp = jnp.mean(jnp.abs(fft2c(jax.vmap(decode)(w))) ** 2, axis=0)
+    assert bool(jnp.all(jnp.abs(emp - P) < 0.35 * P + 1e-4)), "per-bin sample power must match P"
+
+
+def test_wiener_all_zero_mask_returns_prior():
+    x = _phantoms()
+    P = estimate_power_spectrum(x)
+    mask = jnp.zeros(x.shape[1:])
+    out = wiener_reconstruct(mask * 0j, mask, P, 0.05)
+    assert bool(jnp.allclose(out["mean"], 0.0, atol=1e-6))     # nothing measured -> prior mean
+    assert float(out["std"].min()) > 0                         # ... with full prior uncertainty
+
+
+def test_wiener_rejects_negative_sigma():
+    import pytest
+
+    x = _phantoms()
+    P = estimate_power_spectrum(x)
+    with pytest.raises(ValueError):
+        wiener_reconstruct(jnp.zeros(x.shape[1:], jnp.complex64), jnp.ones(x.shape[1:]), P, -0.1)
