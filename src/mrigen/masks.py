@@ -82,7 +82,7 @@ def random_mask(
     acs = acs_columns(w, acs_frac)
     cols = np.zeros(w, dtype=np.float32)
     cols[acs] = 1.0
-    n_target = int(round(w / acceleration))
+    n_target = round(w / acceleration)
     n_extra = max(0, n_target - len(acs))
     candidates = np.setdiff1d(np.arange(w), acs)
     chosen = rng.choice(candidates, size=min(n_extra, len(candidates)), replace=False)
