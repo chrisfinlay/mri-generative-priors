@@ -9,6 +9,9 @@ where F = fourier.fft2c (centred orthonormal FFT) and M is the binary Cartesian
 mask from masks.py. The adjoint maps k-space back to image space, and the
 data-consistency (DC) projection forces the reconstruction to agree with the
 *measured* k-space samples while keeping the model's estimate everywhere else.
+
+Which library: everything in this file is JAX -- ``jnp`` and the given
+``fft2c`` / ``ifft2c`` are imported above, and that is all you need.
 """
 
 from __future__ import annotations

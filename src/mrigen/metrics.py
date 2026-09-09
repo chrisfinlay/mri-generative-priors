@@ -2,6 +2,10 @@
 
 Mixed given / TODO.
 
+This module is **plain NumPy**: metrics run on the CPU after reconstruction, so
+only ``np`` is imported here -- there is no ``jnp`` in this file. Write your
+implementations with ``np``.
+
 TODO (evaluation thread): ``psnr`` and ``nmse`` -- two-line formulas, build confidence and
 force you to think about what "reconstruction error" means.
 
@@ -21,6 +25,8 @@ def psnr(gt: np.ndarray, pred: np.ndarray, data_range: float | None = None) -> f
     """Peak signal-to-noise ratio in dB (higher is better).
 
     PSNR = 10 * log10(data_range**2 / MSE).
+
+    Plain NumPy: use ``np`` (``jnp`` is not imported in this file).
     """
     # TODO (evaluation thread): implement PSNR.
     raise NotImplementedError("psnr is a TODO for the evaluation thread")
@@ -30,6 +36,8 @@ def nmse(gt: np.ndarray, pred: np.ndarray) -> float:
     """Normalised mean squared error (lower is better).
 
     NMSE = ||pred - gt||^2 / ||gt||^2.
+
+    Plain NumPy: use ``np`` (``jnp`` is not imported in this file).
     """
     # TODO (evaluation thread): implement NMSE.
     raise NotImplementedError("nmse is a TODO for the evaluation thread")
