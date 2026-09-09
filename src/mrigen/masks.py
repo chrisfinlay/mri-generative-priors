@@ -15,6 +15,12 @@ You must implement:
 Both return a real {0., 1.} array broadcastable over the k-space image, i.e.
 shape ``(H, W)`` where whole columns are on or off.
 
+Which library: build the mask however you like -- ``np`` and ``jnp`` are both
+imported -- but **return a JAX array** (``jnp.asarray(...)`` at the end is
+enough). Masks are built once on the host, so for randomness use plain NumPy
+(``np.random.default_rng(seed)``); ``jax.random`` is not needed and ``jax``
+itself is not imported here.
+
 Reference (give to students only if stuck): the ACS band is the central
 ``acs_frac * W`` columns; the effective acceleration counts the ACS columns as
 already sampled.
@@ -51,10 +57,10 @@ def equispaced_mask(
     Returns:
         (H, W) float array of 0./1.; entire columns are on or off.
     """
-    # TODO (Team B): build a (H, W) mask that
+    # TODO (reconstruction thread): build a (H, W) mask that
     #   1) turns ON every `acceleration`-th column, and
     #   2) turns ON the central ACS columns (use `acs_columns`).
-    raise NotImplementedError("equispaced_mask is a TODO for Team B")
+    raise NotImplementedError("equispaced_mask is a TODO for the reconstruction thread")
 
 
 def random_mask(
@@ -69,13 +75,13 @@ def random_mask(
         shape: (H, W) of the k-space image.
         acceleration: target overall R.
         acs_frac: fraction of columns kept fully-sampled in the centre.
-        seed: RNG seed for reproducibility.
+        seed: RNG seed for reproducibility (feed it to ``np.random.default_rng``).
 
     Returns:
         (H, W) float array of 0./1.; entire columns are on or off.
     """
-    # TODO (Team B): build a (H, W) mask that
+    # TODO (reconstruction thread): build a (H, W) mask that
     #   1) always keeps the central ACS columns, and
     #   2) randomly keeps additional columns so that the *total* fraction of
     #      kept columns is approximately 1/acceleration.
-    raise NotImplementedError("random_mask is a TODO for Team B")
+    raise NotImplementedError("random_mask is a TODO for the reconstruction thread")

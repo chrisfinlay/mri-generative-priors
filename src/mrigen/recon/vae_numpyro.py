@@ -44,7 +44,7 @@ def recon_model(y_obs, mask, decode, latent_dim, sigma):
         numpyro.sample("y_re", dist.Normal(k.real, sigma).mask(obs), obs=y_obs.real)
         numpyro.sample("y_im", dist.Normal(k.imag, sigma).mask(obs), obs=y_obs.imag)
     """
-    raise NotImplementedError("recon_model body is a TODO for Team B")
+    raise NotImplementedError("recon_model body is a TODO for the reconstruction thread")
 
 
 def reconstruct_map(

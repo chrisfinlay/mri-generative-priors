@@ -9,6 +9,9 @@ where F = fourier.fft2c (centred orthonormal FFT) and M is the binary Cartesian
 mask from masks.py. The adjoint maps k-space back to image space, and the
 data-consistency (DC) projection forces the reconstruction to agree with the
 *measured* k-space samples while keeping the model's estimate everywhere else.
+
+Which library: everything in this file is JAX -- ``jnp`` and the given
+``fft2c`` / ``ifft2c`` are imported above, and that is all you need.
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ def forward(x: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
 
     TODO (reconstruction thread): return the masked centred FFT of x.
     """
-    raise NotImplementedError("forward is a TODO for Team B")
+    raise NotImplementedError("forward is a TODO for the reconstruction thread")
 
 
 def adjoint(k: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
@@ -32,7 +35,7 @@ def adjoint(k: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
     TODO (reconstruction thread): apply the mask then the centred inverse FFT. (For a real
     magnitude image you will usually take ``.real`` downstream.)
     """
-    raise NotImplementedError("adjoint is a TODO for Team B")
+    raise NotImplementedError("adjoint is a TODO for the reconstruction thread")
 
 
 def data_consistency(x_est: jnp.ndarray, y_obs: jnp.ndarray, mask: jnp.ndarray) -> jnp.ndarray:
@@ -45,4 +48,4 @@ def data_consistency(x_est: jnp.ndarray, y_obs: jnp.ndarray, mask: jnp.ndarray) 
     TODO (reconstruction thread): implement the DC projection above and return the (real)
     image.
     """
-    raise NotImplementedError("data_consistency is a TODO for Team B")
+    raise NotImplementedError("data_consistency is a TODO for the reconstruction thread")
