@@ -40,17 +40,19 @@ def download(n: int) -> None:
     kept = 0
     # Stream (mode "r|*"): read the archive sequentially from the network and
     # stop early — no full download, no full decompression.
-    with urllib.request.urlopen(url) as resp:  # noqa: S310 (user-supplied DSA link)
-        with tarfile.open(fileobj=resp, mode="r|*") as tar:
-            for member in tar:
-                if not member.name.endswith(".h5"):
-                    continue
-                member.name = Path(member.name).name  # flatten into raw/
-                tar.extract(member, RAW_DIR, filter="data")
-                kept += 1
-                print("  ->", RAW_DIR / member.name)
-                if kept >= n:
-                    break
+    with (
+        urllib.request.urlopen(url) as resp,  # user-supplied DSA link
+        tarfile.open(fileobj=resp, mode="r|*") as tar,
+    ):
+        for member in tar:
+            if not member.name.endswith(".h5"):
+                continue
+            member.name = Path(member.name).name  # flatten into raw/
+            tar.extract(member, RAW_DIR, filter="data")
+            kept += 1
+            print("  ->", RAW_DIR / member.name)
+            if kept >= n:
+                break
 
     print(f"done: {kept} volume(s) in {RAW_DIR}")
     print("next: python data/preprocess.py")

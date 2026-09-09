@@ -13,6 +13,8 @@ calibrated uncertainty has error growing with predicted std).
 
 from __future__ import annotations
 
+from itertools import pairwise
+
 import numpy as np
 from skimage.metrics import structural_similarity
 
@@ -84,6 +86,6 @@ def calibration_curve(
     order = np.argsort(std)
     std, error = std[order], error[order]
     edges = np.linspace(0, len(std), n_bins + 1).astype(int)
-    mean_std = np.array([std[a:b].mean() for a, b in zip(edges[:-1], edges[1:]) if b > a])
-    mean_err = np.array([error[a:b].mean() for a, b in zip(edges[:-1], edges[1:]) if b > a])
+    mean_std = np.array([std[a:b].mean() for a, b in pairwise(edges) if b > a])
+    mean_err = np.array([error[a:b].mean() for a, b in pairwise(edges) if b > a])
     return mean_std, mean_err

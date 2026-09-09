@@ -76,7 +76,7 @@ def test_sweep_zero_filled_vs_zeros_with_calibration():
     for R in (2, 4):
         assert s[("zero-filled", R)]["psnr"][0] > s[("zeros", R)]["psnr"][0]
     assert "zeros" in res.pooled and "zero-filled" not in res.pooled
-    ms, me = ev.calibration(res, "zeros", n_bins=5)
+    ms, _me = ev.calibration(res, "zeros", n_bins=5)
     assert len(ms) <= 5 and np.allclose(ms, 0.3)
     assert res.worst["zero-filled"]["R"] == 4  # worst case is at the highest acceleration
     assert "| zero-filled |" in ev.table(res.rows)
