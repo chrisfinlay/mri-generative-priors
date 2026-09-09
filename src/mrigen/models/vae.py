@@ -91,7 +91,8 @@ def reparameterise(mu: jnp.ndarray, logvar: jnp.ndarray, key) -> jnp.ndarray:
     """Sample z ~ N(mu, sigma^2) differentiably (the reparameterisation trick).
 
     TODO (students): return ``mu + sigma * eps`` where
-    ``sigma = exp(0.5 * logvar)`` and ``eps ~ N(0, I)`` (use ``key``).
+    ``sigma = exp(0.5 * logvar)`` and ``eps ~ N(0, I)`` -- draw ``eps`` with
+    ``jax.random.normal`` and ``key`` (``jax`` and ``jnp`` are imported here).
     Sampling z directly is not differentiable; this makes it so.
     """
     # SOLUTION

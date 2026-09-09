@@ -2,6 +2,15 @@
 
 Mixed given / TODO.
 
+This module is **plain NumPy** -- deliberately. JAX is for the parts of the
+codebase that must be differentiated or compiled (the decoder, the FFTs, the
+likelihood); metrics run once per reconstruction, *after* inference, on the
+CPU, and feed plain floats into tables and plots. In ``jnp`` they would ship
+every image to the accelerator and back for a subtraction and a log. This
+JAX-core-with-NumPy-around-it shape is how real JAX codebases look; deciding
+where the boundary sits is part of the skill. Only ``np`` is imported here --
+write your implementations with ``np``.
+
 TODO (evaluation thread): ``psnr`` and ``nmse`` -- two-line formulas, build confidence and
 force you to think about what "reconstruction error" means.
 
@@ -23,6 +32,8 @@ def psnr(gt: np.ndarray, pred: np.ndarray, data_range: float | None = None) -> f
     """Peak signal-to-noise ratio in dB (higher is better).
 
     PSNR = 10 * log10(data_range**2 / MSE).
+
+    Plain NumPy: use ``np`` (``jnp`` is not imported in this file).
     """
     # SOLUTION
     gt = np.asarray(gt, dtype=np.float64)
@@ -39,6 +50,8 @@ def nmse(gt: np.ndarray, pred: np.ndarray) -> float:
     """Normalised mean squared error (lower is better).
 
     NMSE = ||pred - gt||^2 / ||gt||^2.
+
+    Plain NumPy: use ``np`` (``jnp`` is not imported in this file).
     """
     # SOLUTION
     gt = np.asarray(gt, dtype=np.float64)
