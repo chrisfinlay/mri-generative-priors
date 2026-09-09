@@ -30,6 +30,8 @@ pixi run lab            # opens JupyterLab; the prep notebooks are in notebooks/
 - Run every cell in order and read the comments — they are the explanation.
 - Exercise cells contain `# YOUR CODE HERE` and `...`. Replace the `...`, run the cell, then run the
   **check** cell below it. No `AssertionError` = done.
+- Under each exercise sits a **collapsed hint** (click to expand). Try honestly first — 15 minutes of
+  being stuck teaches more than the hint does — and treat opening it as spending a life, not as step one.
 - When a notebook asks you to implement a function *in the repo* (`metrics.py`, `masks.py`, ...), edit the
   file, then re-run the notebook's bridge cell: it reloads the module for you. If it still shows the old
   behaviour, restart the kernel.

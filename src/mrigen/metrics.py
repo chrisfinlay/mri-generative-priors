@@ -22,8 +22,8 @@ def psnr(gt: np.ndarray, pred: np.ndarray, data_range: float | None = None) -> f
 
     PSNR = 10 * log10(data_range**2 / MSE).
     """
-    # TODO (Team C): implement PSNR.
-    raise NotImplementedError("psnr is a TODO for Team C")
+    # TODO (evaluation thread): implement PSNR.
+    raise NotImplementedError("psnr is a TODO for the evaluation thread")
 
 
 def nmse(gt: np.ndarray, pred: np.ndarray) -> float:
@@ -31,8 +31,8 @@ def nmse(gt: np.ndarray, pred: np.ndarray) -> float:
 
     NMSE = ||pred - gt||^2 / ||gt||^2.
     """
-    # TODO (Team C): implement NMSE.
-    raise NotImplementedError("nmse is a TODO for Team C")
+    # TODO (evaluation thread): implement NMSE.
+    raise NotImplementedError("nmse is a TODO for the evaluation thread")
 
 
 def ssim(gt: np.ndarray, pred: np.ndarray, data_range: float | None = None) -> float:

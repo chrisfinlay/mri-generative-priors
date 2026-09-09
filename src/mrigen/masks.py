@@ -51,10 +51,10 @@ def equispaced_mask(
     Returns:
         (H, W) float array of 0./1.; entire columns are on or off.
     """
-    # TODO (Team B): build a (H, W) mask that
+    # TODO (reconstruction thread): build a (H, W) mask that
     #   1) turns ON every `acceleration`-th column, and
     #   2) turns ON the central ACS columns (use `acs_columns`).
-    raise NotImplementedError("equispaced_mask is a TODO for Team B")
+    raise NotImplementedError("equispaced_mask is a TODO for the reconstruction thread")
 
 
 def random_mask(
@@ -74,8 +74,8 @@ def random_mask(
     Returns:
         (H, W) float array of 0./1.; entire columns are on or off.
     """
-    # TODO (Team B): build a (H, W) mask that
+    # TODO (reconstruction thread): build a (H, W) mask that
     #   1) always keeps the central ACS columns, and
     #   2) randomly keeps additional columns so that the *total* fraction of
     #      kept columns is approximately 1/acceleration.
-    raise NotImplementedError("random_mask is a TODO for Team B")
+    raise NotImplementedError("random_mask is a TODO for the reconstruction thread")
