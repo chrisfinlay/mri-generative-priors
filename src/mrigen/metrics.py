@@ -2,9 +2,14 @@
 
 Mixed given / TODO.
 
-This module is **plain NumPy**: metrics run on the CPU after reconstruction, so
-only ``np`` is imported here -- there is no ``jnp`` in this file. Write your
-implementations with ``np``.
+This module is **plain NumPy** -- deliberately. JAX is for the parts of the
+codebase that must be differentiated or compiled (the decoder, the FFTs, the
+likelihood); metrics run once per reconstruction, *after* inference, on the
+CPU, and feed plain floats into tables and plots. In ``jnp`` they would ship
+every image to the accelerator and back for a subtraction and a log. This
+JAX-core-with-NumPy-around-it shape is how real JAX codebases look; deciding
+where the boundary sits is part of the skill. Only ``np`` is imported here --
+write your implementations with ``np``.
 
 TODO (evaluation thread): ``psnr`` and ``nmse`` -- two-line formulas, build confidence and
 force you to think about what "reconstruction error" means.
