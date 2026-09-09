@@ -31,6 +31,7 @@ over slices, :func:`table` a markdown table, :func:`plot_metric_vs_R` the curve,
 
 from __future__ import annotations
 
+import contextlib
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -176,10 +177,8 @@ class Results:
 
 def _block(x):
     """Wait for async JAX work so timings are honest."""
-    try:
+    with contextlib.suppress(Exception):  # plain numpy or python objects
         jax.block_until_ready(x)
-    except Exception:  # plain numpy or python objects
-        pass
 
 
 def evaluate(

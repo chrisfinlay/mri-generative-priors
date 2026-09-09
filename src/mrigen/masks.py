@@ -31,7 +31,7 @@ def acs_columns(width: int, acs_frac: float) -> np.ndarray:
 
     Returns the integer column indices of the fully-sampled centre band.
     """
-    n_acs = max(1, int(round(acs_frac * width)))
+    n_acs = max(1, round(acs_frac * width))
     start = (width - n_acs) // 2
     return np.arange(start, start + n_acs)
 
@@ -82,7 +82,7 @@ def random_mask(
     acs = acs_columns(w, acs_frac)
     cols = np.zeros(w, dtype=np.float32)
     cols[acs] = 1.0
-    n_target = int(round(w / acceleration))
+    n_target = round(w / acceleration)
     n_extra = max(0, n_target - len(acs))
     candidates = np.setdiff1d(np.arange(w), acs)
     chosen = rng.choice(candidates, size=min(n_extra, len(candidates)), replace=False)
