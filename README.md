@@ -43,6 +43,9 @@ pixi run lab                       # open the notebooks
 pixi run test                      # shape / round-trip tests
 ```
 
+**On the school GPU server** the data is already downloaded; skip the
+download/preprocess steps and follow [`SERVER.md`](SERVER.md) instead.
+
 If GPU training is slow, skip it: a pre-trained `checkpoints/vae_128.eqx`
 ships with the repo (see [`CHECKPOINTS.md`](CHECKPOINTS.md)).
 

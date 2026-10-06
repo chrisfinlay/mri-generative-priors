@@ -13,6 +13,7 @@ safe to redistribute under the fastMRI Data Sharing Agreement.
 | Latent dim | 128 |
 | β | 1.0 |
 | Training data | knee magnitude slices from `knee_singlecoil_val`, **train split only** — the volumes in `mrigen.data.HELDOUT_VOLUMES` (`file1000593`, `file1002067`, the first two in the archive) were excluded |
+| Training data (server) | on the school server, `singlecoil_train` **train split only** (see `SERVER.md`); `singlecoil_val` is the untouched test set |
 | Optimiser | Adam, lr 1e-3 |
 | Held-out recon PSNR / SSIM | _fill in after pre-training_ |
 

@@ -260,7 +260,9 @@ decoder needs no adapter at all.
 
 1. **Held-out slices only** — `FastMRISlices(root, split="test")`. The volumes in
    `mrigen.data.HELDOUT_VOLUMES` are excluded from the checkpoint's training and
-   must be excluded from yours. Numbers on training slices are not results.
+   must be excluded from yours. Numbers on training slices are not results. (On
+   the school server, `test` is all of fastMRI `singlecoil_val` and you tune on
+   `split="val"` -- see `SERVER.md`.)
 2. **Same mask, same noise draw, same σ for every method**, seeded per (slice, R).
 3. **PSNR, SSIM, NMSE** against the fully-sampled truth, `data_range = 1`.
 4. **Effective acceleration** `R_eff = M.size / M.sum()` in every table header —

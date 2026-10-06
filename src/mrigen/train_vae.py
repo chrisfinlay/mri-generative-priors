@@ -107,7 +107,7 @@ def main():
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--out", default="checkpoints/vae_128.eqx")
-    p.add_argument("--split", default="train", help="'train' (default), 'test', or 'all'")
+    p.add_argument("--split", default="train", help="'train' (default), 'val', 'test', or 'all'")
     args = p.parse_args()
     train(
         args.data,

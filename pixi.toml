@@ -14,6 +14,9 @@ lab = "jupyter lab"
 check = "python -m mrigen.setup_check"
 download = "python data/download_subset.py"
 preprocess = "python data/preprocess.py"
+# School GPU server only (see SERVER.md): shared data under /shared
+server-prepare = "python scripts/server.py prepare"
+server-setup = "python scripts/server.py setup"
 
 [dependencies]
 python = ">=3.11,<3.13"
