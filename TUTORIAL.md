@@ -137,8 +137,12 @@ def reparam(mu, logvar, key):
     # TODO: mu + exp(0.5 * logvar) * standard_normal(key)
     ...
 
-# loss = mean((x - decoder(z))**2)  +  beta * KL(q(z|x) ‖ N(0, I))
+# loss = mean((x - decoder(z))**2)  +  beta * KL(q(z|x) ‖ N(0, I)) / n_pixels
 ```
+
+Both terms are per *pixel*. Divide the KL by the number of latents instead and it
+is weighted ~128× too heavily: the encoder learns to ignore the image and every
+output is the average knee (*posterior collapse*).
 
 ### 3.3 What to expect (a teaching point)
 

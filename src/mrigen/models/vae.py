@@ -6,7 +6,7 @@ TODO (students): the reparameterisation trick in ``reparameterise``. This is
 the one line that makes the whole thing trainable -- sampling z directly is not
 differentiable, so we sample epsilon ~ N(0, I) and form z = mu + sigma * eps so
 gradients flow through mu and sigma. The beta term is exposed as a knob (try
-0.1 .. 4.0) trading reconstruction sharpness against a smoother latent prior.
+0.03 .. 1.0) trading reconstruction sharpness against a smoother latent prior.
 
 The decoder is a pure function of z once parameters are frozen, which is exactly
 what NumPyro needs (see recon/vae_numpyro.py).
@@ -44,7 +44,9 @@ class Encoder(eqx.Module):
         for conv in self.layers:
             h = jax.nn.gelu(conv(h))
         h = h.reshape(-1)
-        return self.head_mu(h), self.head_logvar(h)
+        # Bound logvar: it goes through exp() in the sample and the KL, and one
+        # unbounded step can overflow to inf and turn the whole run into NaN.
+        return self.head_mu(h), jnp.clip(self.head_logvar(h), -10.0, 10.0)
 
 
 class Decoder(eqx.Module):
@@ -101,17 +103,28 @@ def reparameterise(mu: jnp.ndarray, logvar: jnp.ndarray, key) -> jnp.ndarray:
     return mu + sigma * eps
 
 
+def kl_divergence(mu: jnp.ndarray, logvar: jnp.ndarray) -> jnp.ndarray:
+    """Closed-form KL[N(mu, sigma^2) || N(0, I)], **summed** over latents. GIVEN."""
+    return -0.5 * jnp.sum(1.0 + logvar - mu**2 - jnp.exp(logvar))
+
+
 def vae_loss(model: VAE, x: jnp.ndarray, key, beta: float = 1.0):
     """beta-VAE negative ELBO for a single image x of shape (128, 128). GIVEN.
 
-    Returns (loss, (recon_mse, kl)). Reconstruction is Gaussian (MSE);
-    KL is the closed-form KL[N(mu, sigma^2) || N(0, I)].
+    Returns (loss, (recon_mse, kl)). Reconstruction is Gaussian (MSE); KL is the
+    closed-form KL[N(mu, sigma^2) || N(0, I)].
+
+    Both terms are *per pixel*: the negative ELBO (summed squared error + summed
+    KL) divided by the number of pixels. Dividing the KL by the number of
+    *latents* instead would weight it ~128x too heavily (16384 pixels vs 128
+    latents), and the encoder learns to ignore x -- "posterior collapse": every
+    decoded image is the average knee.
     """
     mu, logvar = model.encoder(x)
     z = reparameterise(mu, logvar, key)
     x_hat = model.decoder(z)
     recon = jnp.mean((x_hat - x) ** 2)
-    kl = -0.5 * jnp.mean(1.0 + logvar - mu**2 - jnp.exp(logvar))
+    kl = kl_divergence(mu, logvar) / x.size
     loss = recon + beta * kl
     return loss, (recon, kl)
 

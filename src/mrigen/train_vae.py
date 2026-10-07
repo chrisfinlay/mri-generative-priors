@@ -72,7 +72,8 @@ def train(
     dataset = FastMRISlices(data_dir, split=split)
     print(f"training on {len(dataset)} slices from {len(dataset.volumes)} volume(s) "
           f"(split={split!r})")
-    optim = optax.adam(lr)
+    # Clip the gradient norm so one bad batch can't throw the weights to NaN.
+    optim = optax.chain(optax.clip_by_global_norm(1.0), optax.adam(lr))
     opt_state = optim.init(eqx.filter(model, eqx.is_array))
 
     for epoch in range(epochs):

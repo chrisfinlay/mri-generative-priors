@@ -1,13 +1,13 @@
 """Decoder-purity tests (GIVEN; CLAUDE.md Contract 4).
 
-These do not depend on any TODO (only the given decoder + make_decoder_fn), so
-they run on every branch.
+These do not depend on any TODO (only the given encoder, decoder, KL and
+make_decoder_fn), so they run on every branch.
 """
 
 import jax
 import jax.numpy as jnp
 
-from mrigen.models.vae import VAE, make_decoder_fn
+from mrigen.models.vae import VAE, kl_divergence, make_decoder_fn
 
 LATENT = 128  # CLAUDE.md Contract 4: latent_dim in 128-256
 
@@ -40,3 +40,19 @@ def test_make_decoder_fn_accepts_model_or_decoder():
     vae = VAE(latent_dim=LATENT, key=jax.random.PRNGKey(0))
     z = jnp.zeros(LATENT)
     assert jnp.allclose(make_decoder_fn(vae)(z), make_decoder_fn(vae.decoder)(z))
+
+
+def test_kl_is_summed_over_latents():
+    # Summed, not averaged: a regression to jnp.mean weighted the KL ~128x too
+    # heavily in vae_loss and collapsed the posterior.
+    mu, logvar = jnp.ones(LATENT), jnp.zeros(LATENT)
+    assert jnp.allclose(kl_divergence(mu, logvar), 0.5 * LATENT)
+    assert jnp.allclose(kl_divergence(jnp.zeros(LATENT), jnp.zeros(LATENT)), 0.0)
+
+
+def test_encoder_logvar_is_bounded():
+    # exp(logvar) must not overflow, even for an absurd input.
+    vae = VAE(latent_dim=LATENT, key=jax.random.PRNGKey(0))
+    _, logvar = vae.encoder(1e6 * jnp.ones((128, 128)))
+    assert jnp.all(jnp.abs(logvar) <= 10.0)
+    assert jnp.all(jnp.isfinite(jnp.exp(logvar)))
