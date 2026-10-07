@@ -52,33 +52,50 @@ def _to_slices(esc: np.ndarray, size: int) -> np.ndarray:
     return out
 
 
-def preprocess(size: int = 128) -> None:
-    vols = sorted(RAW_DIR.glob("*.h5"))
+def preprocess_volume(vol: Path, out_dir: Path, size: int = 128) -> int:
+    """Write ``out_dir/<vol stem>.npz`` from one ``.h5`` volume; return its slice count.
+
+    Returns 0 (and writes nothing) if the volume has no ``reconstruction_esc``,
+    e.g. the fastMRI *test* set, which ships only undersampled k-space.
+    """
+    with h5py.File(vol, "r") as f:
+        if SOURCE_KEY not in f:
+            print(f"skip {vol.name}: no '{SOURCE_KEY}' dataset")
+            return 0
+        esc = f[SOURCE_KEY][()]  # (n_slices, 320, 320) float32 magnitude
+    slices = _to_slices(esc, size)
+    # write-then-rename, so an interrupted run never leaves a truncated shard
+    tmp = out_dir / f".{vol.stem}.npz.tmp"
+    with open(tmp, "wb") as fh:
+        np.savez_compressed(fh, slices=slices)
+    tmp.replace(out_dir / f"{vol.stem}.npz")
+    return slices.shape[0]
+
+
+def preprocess(size: int = 128, raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR) -> None:
+    vols = sorted(raw_dir.glob("*.h5"))
     if not vols:
         raise SystemExit(
-            f"No .h5 files in {RAW_DIR}. Run `python data/download_subset.py` first."
+            f"No .h5 files in {raw_dir}. Run `python data/download_subset.py` first."
         )
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     for vol in vols:
-        with h5py.File(vol, "r") as f:
-            if SOURCE_KEY not in f:
-                print(f"skip {vol.name}: no '{SOURCE_KEY}' dataset")
-                continue
-            esc = f[SOURCE_KEY][()]  # (n_slices, 320, 320) float32 magnitude
-        slices = _to_slices(esc, size)
-        out = OUT_DIR / f"{vol.stem}.npz"
-        np.savez_compressed(out, slices=slices)
-        print(f"{vol.name}: {slices.shape[0]} slices -> {out}")
+        n = preprocess_volume(vol, out_dir, size)
+        if n:
+            print(f"{vol.name}: {n} slices -> {out_dir / (vol.stem + '.npz')}")
 
-    total = sum(np.load(p)["slices"].shape[0] for p in OUT_DIR.glob("*.npz"))
-    print(f"done: {total} slices in {OUT_DIR}")
+    total = sum(np.load(p)["slices"].shape[0] for p in out_dir.glob("*.npz"))
+    print(f"done: {total} slices in {out_dir}")
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--size", type=int, default=128)
-    preprocess(p.parse_args().size)
+    p.add_argument("--raw", type=Path, default=RAW_DIR, help="directory of .h5 volumes")
+    p.add_argument("--out", type=Path, default=OUT_DIR, help="where to write .npz shards")
+    args = p.parse_args()
+    preprocess(args.size, args.raw, args.out)
 
 
 if __name__ == "__main__":

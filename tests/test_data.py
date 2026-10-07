@@ -55,6 +55,8 @@ def test_split_holds_out_named_volumes(tmp_path):
     test = FastMRISlices(root, split="test", heldout=("file_b",))
     assert len(everything) == 9 and len(train) == 7 and len(test) == 2
     assert train.volumes == ["file_a", "file_c"] and test.volumes == ["file_b"]
+    # laptop layout: "val" is the same held-out volumes as "test"
+    assert FastMRISlices(root, split="val", heldout=("file_b",)).volumes == ["file_b"]
     assert list(train.volume_index) == [0, 0, 0, 1, 1, 1, 1]
     # train and test are disjoint
     assert not np.any(np.all(train.slices[:, None] == test.slices[None], axis=(2, 3)))
@@ -66,3 +68,28 @@ def test_split_errors_are_helpful(tmp_path):
         FastMRISlices(root, split="validation")
     with pytest.raises(FileNotFoundError, match="Held-out volumes"):
         FastMRISlices(root, split="test", heldout=("file_missing",))
+
+
+def _split_dirs(tmp_path):
+    rng = np.random.default_rng(0)
+    layout = {"train": ("file_a", "file_c"), "val": ("file_d",), "test": ("file_b",)}
+    for split, names in layout.items():
+        (tmp_path / split).mkdir()
+        for name in names:
+            slices = rng.random((2, 8, 8)).astype(np.float32)
+            np.savez(tmp_path / split / f"{name}.npz", slices=slices)
+    return tmp_path
+
+
+def test_server_layout_picks_split_directory(tmp_path):
+    root = _split_dirs(tmp_path)
+    assert FastMRISlices(root, split="train").volumes == ["file_a", "file_c"]
+    assert FastMRISlices(root, split="val").volumes == ["file_d"]
+    # heldout= is ignored: the directory decides
+    assert FastMRISlices(root, split="test", heldout=("file_a",)).volumes == ["file_b"]
+
+
+def test_server_layout_refuses_mixed_splits(tmp_path):
+    root = _split_dirs(tmp_path)
+    with pytest.raises(ValueError, match="split must be one of"):
+        FastMRISlices(root)
