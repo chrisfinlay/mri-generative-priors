@@ -105,10 +105,10 @@ def reparameterise(mu: jnp.ndarray, logvar: jnp.ndarray, key) -> jnp.ndarray:
     return mu + sigma * eps
 
 
-#: Fallback noise std (normalised units) when none is given: roughly the median
-#: measured over the fastMRI knee training volumes. Training passes each slice's
-#: own value (``FastMRISlices.sigmas``).
-DEFAULT_NOISE_SIGMA = 0.02
+#: Fallback noise std (normalised units) when none is given: the median measured
+#: over the fastMRI knee train split (p10 - p90: 0.006 - 0.035). Training passes
+#: each slice's own value (``FastMRISlices.sigmas``).
+DEFAULT_NOISE_SIGMA = 0.016
 
 
 def kl_divergence(mu: jnp.ndarray, logvar: jnp.ndarray) -> jnp.ndarray:

@@ -140,7 +140,7 @@ def reparam(mu, logvar, key):
 # loss = mean((x - decoder(z))**2) / (2 sigma**2)  +  beta * KL(q(z|x) ‖ N(0, I)) / n_pixels
 ```
 
-`sigma` is the image's **measured noise std** (`FastMRISlices.sigmas`, about 0.02
+`sigma` is the image's **measured noise std** (`FastMRISlices.sigmas`, median 0.016
 on the [0, 1] scale, measured from each volume's k-space), so `beta = 1` is the
 true ELBO: the model is told how noisy the pixels really are. Both terms are per
 *pixel*. Get the weighting wrong -- divide the KL by the number of latents, or
