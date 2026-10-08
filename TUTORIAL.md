@@ -137,12 +137,15 @@ def reparam(mu, logvar, key):
     # TODO: mu + exp(0.5 * logvar) * standard_normal(key)
     ...
 
-# loss = mean((x - decoder(z))**2)  +  beta * KL(q(z|x) ‖ N(0, I)) / n_pixels
+# loss = mean((x - decoder(z))**2) / (2 sigma**2)  +  beta * KL(q(z|x) ‖ N(0, I)) / n_pixels
 ```
 
-Both terms are per *pixel*. Divide the KL by the number of latents instead and it
-is weighted ~128× too heavily: the encoder learns to ignore the image and every
-output is the average knee (*posterior collapse*).
+`sigma` is the image's **measured noise std** (`FastMRISlices.sigmas`, about 0.02
+on the [0, 1] scale, measured from each volume's k-space), so `beta = 1` is the
+true ELBO: the model is told how noisy the pixels really are. Both terms are per
+*pixel*. Get the weighting wrong -- divide the KL by the number of latents, or
+drop `sigma` and implicitly assume noise std ~0.7 -- and the encoder learns to
+ignore the image: every output is the average knee (*posterior collapse*).
 
 ### 3.3 What to expect (a teaching point)
 

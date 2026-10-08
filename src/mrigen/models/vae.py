@@ -5,8 +5,10 @@ GIVEN: the encoder/decoder architecture and the beta-VAE loss skeleton.
 TODO (students): the reparameterisation trick in ``reparameterise``. This is
 the one line that makes the whole thing trainable -- sampling z directly is not
 differentiable, so we sample epsilon ~ N(0, I) and form z = mu + sigma * eps so
-gradients flow through mu and sigma. The beta term is exposed as a knob (try
-0.03 .. 1.0) trading reconstruction sharpness against a smoother latent prior.
+gradients flow through mu and sigma. The beta term is exposed as a knob trading
+reconstruction sharpness against a smoother latent prior. The likelihood uses
+the *measured* noise std of the data, so beta = 1 is the true ELBO; try
+0.25 .. 4.
 
 The decoder is a pure function of z once parameters are frozen, which is exactly
 what NumPyro needs (see recon/vae_numpyro.py).
@@ -103,29 +105,40 @@ def reparameterise(mu: jnp.ndarray, logvar: jnp.ndarray, key) -> jnp.ndarray:
     return mu + sigma * eps
 
 
+#: Fallback noise std (normalised units) when none is given: roughly the median
+#: measured over the fastMRI knee training volumes. Training passes each slice's
+#: own value (``FastMRISlices.sigmas``).
+DEFAULT_NOISE_SIGMA = 0.02
+
+
 def kl_divergence(mu: jnp.ndarray, logvar: jnp.ndarray) -> jnp.ndarray:
     """Closed-form KL[N(mu, sigma^2) || N(0, I)], **summed** over latents. GIVEN."""
     return -0.5 * jnp.sum(1.0 + logvar - mu**2 - jnp.exp(logvar))
 
 
-def vae_loss(model: VAE, x: jnp.ndarray, key, beta: float = 1.0):
+def vae_loss(
+    model: VAE, x: jnp.ndarray, key, beta: float = 1.0, sigma: float = DEFAULT_NOISE_SIGMA
+):
     """beta-VAE negative ELBO for a single image x of shape (128, 128). GIVEN.
 
-    Returns (loss, (recon_mse, kl)). Reconstruction is Gaussian (MSE); KL is the
-    closed-form KL[N(mu, sigma^2) || N(0, I)].
+    Returns ``(loss, (recon_mse, kl))``. The likelihood is Gaussian with the
+    image's **measured noise std** ``sigma`` (``FastMRISlices.sigmas``), so with
+    ``beta = 1`` the loss is exactly the negative ELBO:
 
-    Both terms are *per pixel*: the negative ELBO (summed squared error + summed
-    KL) divided by the number of pixels. Dividing the KL by the number of
-    *latents* instead would weight it ~128x too heavily (16384 pixels vs 128
-    latents), and the encoder learns to ignore x -- "posterior collapse": every
-    decoded image is the average knee.
+        loss = mean((x_hat - x)**2) / (2 sigma**2)  +  beta * KL / n_pixels
+
+    Both terms are *per pixel* (the summed negative ELBO divided by the number of
+    pixels; the constant log(2 pi sigma^2) / 2 is dropped). Two ways to get this
+    wrong, both of which make every decoded image the average knee (posterior
+    collapse): divide the KL by the number of *latents* (weights it ~128x too
+    heavily), or leave out ``sigma`` (assumes noise std ~0.7 on [0, 1] images).
     """
     mu, logvar = model.encoder(x)
     z = reparameterise(mu, logvar, key)
     x_hat = model.decoder(z)
     recon = jnp.mean((x_hat - x) ** 2)
     kl = kl_divergence(mu, logvar) / x.size
-    loss = recon + beta * kl
+    loss = recon / (2.0 * sigma**2) + beta * kl
     return loss, (recon, kl)
 
 

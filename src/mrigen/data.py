@@ -1,7 +1,14 @@
 """Dataset and loading for preprocessed magnitude slices.
 
 GIVEN. Reads the ``.npz`` shards written by ``data/preprocess.py`` and yields
-batches of 128x128 magnitude slices, per-slice normalised to [0, 1]. No
+batches of 128x128 magnitude slices, normalised **per volume** to [0, 1].
+
+**Normalisation and noise.** Each volume is divided by its 99.5th-percentile
+intensity and clipped to [0, 1] (:func:`normalise_volume`). Per volume, not per
+slice: the noise level is nearly constant within a volume, so every slice of it
+keeps the same noise std, and mostly-air edge slices stay dark instead of having
+their noise stretched to full scale. The measured noise std of each slice, in
+these normalised units, is ``dataset.sigmas`` -- the VAE likelihood uses it. No
 patient data ships with the repo; this only touches files the student created
 locally from their own fastMRI download (see data/REGISTER_FIRST.md).
 
@@ -49,6 +56,28 @@ def normalise(x: np.ndarray) -> tuple[np.ndarray, float]:
     return x / np.float32(scale), scale
 
 
+#: Intensity percentile a volume is scaled by (robust to a few hot pixels).
+VOLUME_PERCENTILE = 99.5
+
+
+def normalise_volume(
+    vol: np.ndarray, noise_sigma: float
+) -> tuple[np.ndarray, float, float]:
+    """Scale a (n, H, W) volume to [0, 1]; return ``(vol_norm, scale, sigma_norm)``.
+
+    GIVEN. ``scale`` is the volume's 99.5th-percentile intensity; the brightest
+    0.5% of pixels are clipped to 1. ``sigma_norm = noise_sigma / scale`` is the
+    noise std in the normalised units -- the same for every slice of the volume.
+    As with :func:`normalise`, keep ``scale`` to map results back
+    (CLAUDE.md Contract 2).
+    """
+    vol = np.asarray(vol, dtype=np.float32)
+    scale = float(np.percentile(vol, VOLUME_PERCENTILE))
+    if scale <= 0.0:
+        scale = 1.0
+    return np.clip(vol / np.float32(scale), 0.0, 1.0), scale, float(noise_sigma) / scale
+
+
 def denormalise(x_norm: np.ndarray, scale: float) -> np.ndarray:
     """Invert :func:`normalise`: map a [0, 1] image back by ``scale``. GIVEN."""
     return np.asarray(x_norm, dtype=np.float32) * np.float32(scale)
@@ -69,7 +98,7 @@ class FastMRISlices:
     Args:
         root: directory containing ``*.npz`` shards, each with key ``slices``
             of shape (n, H, W).
-        normalize: if True, scale each slice to [0, 1] by its own max.
+        normalize: if True, scale each volume to [0, 1] (:func:`normalise_volume`).
         split: ``None`` (every shard), ``"train"`` (shards not in ``heldout``)
             or ``"test"`` (shards in ``heldout``). ``"val"`` is accepted as the
             same held-out shards: a laptop download is too small for three
@@ -94,19 +123,35 @@ class FastMRISlices:
             shards = self._heldout_shards(root, split, heldout)
         self.split = split
         self.volumes = [s.stem for s in shards]
-        arrays = [np.load(s)["slices"] for s in shards]
+        arrays, noise = [], []
+        for shard in shards:
+            with np.load(shard) as z:
+                if "noise_sigma" not in z:
+                    raise KeyError(
+                        f"{shard} has no 'noise_sigma': it was preprocessed by an older "
+                        f"version. Re-run `pixi run preprocess` (laptop) or "
+                        f"`pixi run server-prepare --force` (server)."
+                    )
+                arrays.append(z["slices"])
+                noise.append(float(z["noise_sigma"]))
         # which volume each slice came from (index into self.volumes), for reporting
         self.volume_index = np.concatenate(
             [np.full(len(a), i, dtype=np.int32) for i, a in enumerate(arrays)]
         )
+        # Per-slice scale (shared within a volume) maps a reconstruction back to
+        # the original intensity range (CLAUDE.md Contract 2); 1.0 when not
+        # normalising, so denormalise is always a valid inverse. ``sigmas`` is
+        # each slice's noise std in the same units as ``slices``.
+        scales, sigmas = [], []
+        for i, (a, nz) in enumerate(zip(arrays, noise)):
+            scale = 1.0
+            if normalize:
+                arrays[i], scale, nz = normalise_volume(a, nz)
+            scales.append(np.full(len(a), scale, dtype=np.float32))
+            sigmas.append(np.full(len(a), nz, dtype=np.float32))
         self.slices = np.concatenate(arrays, axis=0).astype(np.float32)
-        # Per-slice scales kept so a reconstruction can be mapped back to the
-        # original intensity range (CLAUDE.md Contract 2). Scale is 1.0 when not
-        # normalising, so denormalise is always a valid inverse.
-        self.scales = np.ones(len(self.slices), dtype=np.float32)
-        if normalize:
-            for i in range(len(self.slices)):
-                self.slices[i], self.scales[i] = normalise(self.slices[i])
+        self.scales = np.concatenate(scales)
+        self.sigmas = np.concatenate(sigmas)
 
     @staticmethod
     def _split_dir_shards(root: Path, split: str | None) -> list[Path]:
@@ -155,14 +200,19 @@ class FastMRISlices:
         return self.slices[i]
 
 
-def data_loader(dataset, batch_size: int, *, shuffle: bool = True, seed: int = 0):
+def data_loader(
+    dataset, batch_size: int, *, shuffle: bool = True, seed: int = 0, with_sigma: bool = False
+):
     """Yield batches of shape (batch_size, H, W) for one epoch.
 
-    Drops the last partial batch so shapes stay static for JIT.
+    With ``with_sigma=True`` yield ``(batch, sigma)`` instead, ``sigma`` being the
+    (batch_size,) noise std of each slice (``dataset.sigmas``). Drops the last
+    partial batch so shapes stay static for JIT.
     """
     rng = np.random.default_rng(seed)
     n = len(dataset)
     idx = rng.permutation(n) if shuffle else np.arange(n)
     for start in range(0, n - batch_size + 1, batch_size):
         batch = idx[start : start + batch_size]
-        yield np.stack([dataset[i] for i in batch], axis=0)
+        images = np.stack([dataset[i] for i in batch], axis=0)
+        yield (images, dataset.sigmas[batch]) if with_sigma else images

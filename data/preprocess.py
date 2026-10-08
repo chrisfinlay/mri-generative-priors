@@ -4,7 +4,11 @@ Reads the ``.h5`` files in ``data/raw/`` and, for each, takes the provided
 ``reconstruction_esc`` dataset — the *emulated single-coil* reconstruction,
 which is already the real-valued magnitude image (320x320 float32, the standard
 fastMRI target) — centre-crops it to a square, resizes to 128x128, and writes
-one ``.npz`` per volume with key ``slices`` of shape (n_slices, 128, 128).
+one ``.npz`` per volume with key ``slices`` of shape (n_slices, 128, 128) and
+key ``noise_sigma``: the std of the measurement noise in those slices, in the
+same (raw) units, measured from the volume's k-space (see
+:func:`estimate_noise_sigma`). The VAE likelihood uses it so that beta = 1 is
+the true ELBO.
 
 We use ``reconstruction_esc`` (not the raw ``kspace``) for the magnitude path,
 per CLAUDE.md Contract 3 / the data rules: ``kspace`` is the *native* size
@@ -31,6 +35,33 @@ RAW_DIR = HERE / "raw"
 OUT_DIR = HERE / "processed"
 
 SOURCE_KEY = "reconstruction_esc"
+NOISE_LINES = 40  # outermost k-space readout lines at each end: noise only
+
+
+def estimate_noise_sigma(kspace: np.ndarray) -> float:
+    """Noise std per real/imaginary component, from the edge of k-space.
+
+    The outermost readout lines (highest frequency) carry essentially no knee
+    signal, only measurement noise. With the orthonormal FFT (CLAUDE.md
+    Contract 1) the per-pixel noise std is the same in image space, so this is
+    also the noise std of the ``reconstruction_esc`` image (high-SNR, Gaussian
+    approximation of the magnitude noise). Robust (median absolute deviation),
+    and zero-padded columns are skipped.
+    """
+    edge = np.concatenate([kspace[:, :NOISE_LINES], kspace[:, -NOISE_LINES:]], axis=1)
+    edge = edge[..., np.abs(edge).mean(axis=(0, 1)) > 0]
+    vals = np.concatenate([edge.real.ravel(), edge.imag.ravel()])
+    return float(1.4826 * np.median(np.abs(vals - np.median(vals))))
+
+
+def resize_noise_gain(size: int, native: int = 320, trials: int = 8) -> float:
+    """How much the crop+resize to ``size`` shrinks white-noise std (resize is linear)."""
+    rng = np.random.default_rng(0)
+    return float(np.mean([
+        resize(rng.standard_normal((native, native)), (size, size),
+               anti_aliasing=True, preserve_range=True).std()
+        for _ in range(trials)
+    ]))
 
 
 def _centre_crop_square(img: np.ndarray) -> np.ndarray:
@@ -52,7 +83,7 @@ def _to_slices(esc: np.ndarray, size: int) -> np.ndarray:
     return out
 
 
-def preprocess_volume(vol: Path, out_dir: Path, size: int = 128) -> int:
+def preprocess_volume(vol: Path, out_dir: Path, size: int = 128, gain: float | None = None) -> int:
     """Write ``out_dir/<vol stem>.npz`` from one ``.h5`` volume; return its slice count.
 
     Returns 0 (and writes nothing) if the volume has no ``reconstruction_esc``,
@@ -63,11 +94,14 @@ def preprocess_volume(vol: Path, out_dir: Path, size: int = 128) -> int:
             print(f"skip {vol.name}: no '{SOURCE_KEY}' dataset")
             return 0
         esc = f[SOURCE_KEY][()]  # (n_slices, 320, 320) float32 magnitude
+        sigma_native = estimate_noise_sigma(f["kspace"][()])
     slices = _to_slices(esc, size)
+    gain = resize_noise_gain(size, esc.shape[-1]) if gain is None else gain
+    noise_sigma = np.float32(sigma_native * gain)  # noise std in the stored slices
     # write-then-rename, so an interrupted run never leaves a truncated shard
     tmp = out_dir / f".{vol.stem}.npz.tmp"
     with open(tmp, "wb") as fh:
-        np.savez_compressed(fh, slices=slices)
+        np.savez_compressed(fh, slices=slices, noise_sigma=noise_sigma)
     tmp.replace(out_dir / f"{vol.stem}.npz")
     return slices.shape[0]
 
@@ -80,8 +114,9 @@ def preprocess(size: int = 128, raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR
         )
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    gain = resize_noise_gain(size)
     for vol in vols:
-        n = preprocess_volume(vol, out_dir, size)
+        n = preprocess_volume(vol, out_dir, size, gain)
         if n:
             print(f"{vol.name}: {n} slices -> {out_dir / (vol.stem + '.npz')}")
 

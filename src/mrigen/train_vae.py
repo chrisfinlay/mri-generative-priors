@@ -21,6 +21,7 @@ from pathlib import Path
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
 
 from mrigen.data import FastMRISlices, data_loader
@@ -40,10 +41,10 @@ def load_model(path: str | Path, latent_dim: int = 128) -> VAE:
 
 
 @eqx.filter_jit
-def _train_step(model, opt_state, batch, key, optim, beta):
+def _train_step(model, opt_state, batch, sigma, key, optim, beta):
     def batched_loss(m):
         keys = jax.random.split(key, batch.shape[0])
-        losses, aux = jax.vmap(lambda x, k: vae_loss(m, x, k, beta))(batch, keys)
+        losses, aux = jax.vmap(lambda x, s, k: vae_loss(m, x, k, beta, s))(batch, sigma, keys)
         recon, kl = aux
         return jnp.mean(losses), (jnp.mean(recon), jnp.mean(kl))
 
@@ -54,21 +55,24 @@ def _train_step(model, opt_state, batch, key, optim, beta):
 
 
 @eqx.filter_jit
-def _eval_batch(model, batch, key, beta):
+def _eval_batch(model, batch, sigma, key, beta):
     keys = jax.random.split(key, batch.shape[0])
-    losses, (recon, kl) = jax.vmap(lambda x, k: vae_loss(model, x, k, beta))(batch, keys)
+    losses, (recon, kl) = jax.vmap(lambda x, s, k: vae_loss(model, x, k, beta, s))(
+        batch, sigma, keys
+    )
     return jnp.sum(losses), jnp.sum(recon), jnp.sum(kl)
 
 
-def evaluate_loss(model, slices, beta: float, *, batch_size: int = 256, seed: int = 0):
-    """Mean (loss, recon, kl) over ``slices``, with a fixed key so epochs compare."""
+def evaluate_loss(model, dataset, beta: float, *, batch_size: int = 256, seed: int = 0):
+    """Mean (loss, recon, kl) over a dataset, with a fixed key so epochs compare."""
     key = jax.random.PRNGKey(seed)
     total = jnp.zeros(3)
-    for start in range(0, len(slices), batch_size):
+    for start in range(0, len(dataset), batch_size):
         key, sk = jax.random.split(key)
-        total += jnp.stack(_eval_batch(model, jnp.asarray(slices[start : start + batch_size]),
-                                       sk, beta))
-    return [float(t) / len(slices) for t in total]
+        sl = slice(start, start + batch_size)
+        batch, sigma = jnp.asarray(dataset.slices[sl]), jnp.asarray(dataset.sigmas[sl])
+        total += jnp.stack(_eval_batch(model, batch, sigma, sk, beta))
+    return [float(t) / len(dataset) for t in total]
 
 
 def train(
@@ -97,7 +101,7 @@ def train(
 
     dataset = FastMRISlices(data_dir, split=split)
     print(f"training on {len(dataset)} slices from {len(dataset.volumes)} volume(s) "
-          f"(split={split!r})")
+          f"(split={split!r}); noise std median {np.median(dataset.sigmas):.4f}")
     val = FastMRISlices(data_dir, split=val_split) if val_split else None
     history_path = Path(out).with_suffix(".history.json")
     history = {"config": {"latent_dim": latent_dim, "beta": beta, "batch_size": batch_size,
@@ -110,11 +114,10 @@ def train(
     for epoch in range(epochs):
         ep_loss = ep_recon = ep_kl = 0.0
         n = 0
-        for batch in data_loader(dataset, batch_size, seed=seed + epoch):
+        for batch, sigma in data_loader(dataset, batch_size, seed=seed + epoch, with_sigma=True):
             key, sk = jax.random.split(key)
-            batch = jnp.asarray(batch)
             model, opt_state, loss, (recon, kl) = _train_step(
-                model, opt_state, batch, sk, optim, beta
+                model, opt_state, jnp.asarray(batch), jnp.asarray(sigma), sk, optim, beta
             )
             ep_loss += float(loss)
             ep_recon += float(recon)
@@ -125,7 +128,7 @@ def train(
         line = (f"epoch {epoch:3d}  loss {ep_loss / n:.4f}  "
                 f"recon {ep_recon / n:.4f}  kl {ep_kl / n:.4f}")
         if val is not None:
-            vl, vr, vk = evaluate_loss(model, val.slices, beta)
+            vl, vr, vk = evaluate_loss(model, val, beta)
             row.update(val_loss=vl, val_recon=vr, val_kl=vk)
             line += f"  |  val loss {row['val_loss']:.4f}"
         print(line)

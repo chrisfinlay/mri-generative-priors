@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from mrigen.data import FastMRISlices, denormalise, normalise
+from mrigen.data import FastMRISlices, denormalise, normalise, normalise_volume
 
 
 def test_normalise_to_unit_range():
@@ -44,7 +44,8 @@ def test_scale_applied_identically_train_and_recon():
 def _shards(tmp_path):
     rng = np.random.default_rng(0)
     for name, n in (("file_a", 3), ("file_b", 2), ("file_c", 4)):
-        np.savez(tmp_path / f"{name}.npz", slices=rng.random((n, 8, 8)).astype(np.float32))
+        slices = rng.random((n, 8, 8)).astype(np.float32)
+        np.savez(tmp_path / f"{name}.npz", slices=slices, noise_sigma=np.float32(0.01))
     return tmp_path
 
 
@@ -77,7 +78,7 @@ def _split_dirs(tmp_path):
         (tmp_path / split).mkdir()
         for name in names:
             slices = rng.random((2, 8, 8)).astype(np.float32)
-            np.savez(tmp_path / split / f"{name}.npz", slices=slices)
+            np.savez(tmp_path / split / f"{name}.npz", slices=slices, noise_sigma=np.float32(0.01))
     return tmp_path
 
 
@@ -93,3 +94,29 @@ def test_server_layout_refuses_mixed_splits(tmp_path):
     root = _split_dirs(tmp_path)
     with pytest.raises(ValueError, match="split must be one of"):
         FastMRISlices(root)
+
+
+def test_volume_normalisation_shares_scale_and_noise(tmp_path):
+    # Two slices of one volume: a bright one and a dim (edge-like) one.
+    vol = np.stack([np.full((8, 8), 10.0), np.full((8, 8), 1.0)]).astype(np.float32)
+    vol[0, 0, 0] = 1000.0  # one hot pixel must not set the scale
+    np.savez(tmp_path / "file_v.npz", slices=vol, noise_sigma=np.float32(0.5))
+    ds = FastMRISlices(tmp_path)
+    assert ds.slices.min() >= 0.0 and ds.slices.max() <= 1.0
+    assert ds.scales[0] == ds.scales[1]               # one scale per volume
+    assert ds.slices[1].mean() < ds.slices[0].mean()  # the dim slice stays dim
+    assert np.allclose(ds.sigmas, 0.5 / ds.scales)    # noise in normalised units
+    assert np.allclose(denormalise(ds.slices[1], ds.scales[1]), vol[1], rtol=1e-5)
+
+
+def test_normalise_volume_clips_hot_pixels():
+    vol = np.ones((1, 40, 40), dtype=np.float32)  # 1600 pixels, one hot
+    vol[0, 0, 0] = 100.0
+    out, scale, sigma = normalise_volume(vol, noise_sigma=0.1)
+    assert scale == 1.0 and out.max() == 1.0 and sigma == 0.1
+
+
+def test_old_shards_without_noise_are_rejected(tmp_path):
+    np.savez(tmp_path / "file_old.npz", slices=np.ones((2, 8, 8), np.float32))
+    with pytest.raises(KeyError, match="noise_sigma"):
+        FastMRISlices(tmp_path)

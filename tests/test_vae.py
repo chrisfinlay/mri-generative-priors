@@ -6,8 +6,9 @@ make_decoder_fn), so they run on every branch.
 
 import jax
 import jax.numpy as jnp
+from conftest import skip_if_unimplemented
 
-from mrigen.models.vae import VAE, kl_divergence, make_decoder_fn
+from mrigen.models.vae import VAE, kl_divergence, make_decoder_fn, vae_loss
 
 LATENT = 128  # CLAUDE.md Contract 4: latent_dim in 128-256
 
@@ -56,3 +57,13 @@ def test_encoder_logvar_is_bounded():
     _, logvar = vae.encoder(1e6 * jnp.ones((128, 128)))
     assert jnp.all(jnp.abs(logvar) <= 10.0)
     assert jnp.all(jnp.isfinite(jnp.exp(logvar)))
+
+
+@skip_if_unimplemented
+def test_loss_is_gaussian_nll_with_measured_sigma():
+    # beta = 1 must be the true ELBO: recon / (2 sigma^2) + KL / n_pixels.
+    vae = VAE(latent_dim=LATENT, key=jax.random.PRNGKey(0))
+    x = jax.random.uniform(jax.random.PRNGKey(1), (128, 128))
+    for beta, sigma in ((1.0, 0.02), (2.0, 0.1)):
+        loss, (recon, kl) = vae_loss(vae, x, jax.random.PRNGKey(2), beta=beta, sigma=sigma)
+        assert jnp.allclose(loss, recon / (2 * sigma**2) + beta * kl, rtol=1e-5)

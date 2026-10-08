@@ -15,7 +15,8 @@ def test_train_writes_loss_history(tmp_path):
         (tmp_path / split).mkdir()
         for i in range(n):
             slices = rng.random((4, 128, 128)).astype(np.float32)
-            np.savez(tmp_path / split / f"file_{split}{i}.npz", slices=slices)
+            np.savez(tmp_path / split / f"file_{split}{i}.npz", slices=slices,
+                     noise_sigma=np.float32(0.02))
     out = tmp_path / "ckpt" / "vae.eqx"
     train(str(tmp_path), epochs=2, batch_size=4, out=str(out), split="train", val_split="val")
 
