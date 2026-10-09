@@ -92,8 +92,10 @@ def train(
 
     After every epoch the train and ``val_split`` losses are appended to
     ``<out stem>.history.json`` next to the checkpoint, so the loss curves travel
-    with the weights (and survive a run that is killed part-way).
-    ``val_split=None`` skips the validation pass.
+    with the weights (and survive a run that is killed part-way). The weights
+    with the lowest val loss so far are kept in ``<out stem>_best.eqx`` -- long
+    runs overfit, so these are usually the ones to use. ``val_split=None`` skips
+    the validation pass (and the best checkpoint).
     """
     key = jax.random.PRNGKey(seed)
     model_key, key = jax.random.split(key)
@@ -104,6 +106,8 @@ def train(
           f"(split={split!r}); noise std median {np.median(dataset.sigmas):.4f}")
     val = FastMRISlices(data_dir, split=val_split) if val_split else None
     history_path = Path(out).with_suffix(".history.json")
+    best_path = Path(out).with_name(Path(out).stem + "_best.eqx")
+    best_val = float("inf")
     history = {"config": {"latent_dim": latent_dim, "beta": beta, "batch_size": batch_size,
                           "lr": lr, "seed": seed, "split": split, "val_split": val_split},
                "epochs": []}
@@ -131,6 +135,11 @@ def train(
             vl, vr, vk = evaluate_loss(model, val, beta)
             row.update(val_loss=vl, val_recon=vr, val_kl=vk)
             line += f"  |  val loss {row['val_loss']:.4f}"
+            if vl < best_val:
+                best_val = vl
+                history["best_epoch"] = epoch
+                save_model(best_path, model)
+                line += "  *best"
         print(line)
         history["epochs"].append(row)
         history_path.parent.mkdir(parents=True, exist_ok=True)

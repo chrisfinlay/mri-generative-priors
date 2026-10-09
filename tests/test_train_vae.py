@@ -22,6 +22,8 @@ def test_train_writes_loss_history(tmp_path):
 
     history = json.loads((tmp_path / "ckpt" / "vae.history.json").read_text())
     assert out.exists()
+    assert (tmp_path / "ckpt" / "vae_best.eqx").exists()
+    assert history["best_epoch"] in (0, 1)
     assert history["config"]["val_split"] == "val"
     assert [r["epoch"] for r in history["epochs"]] == [0, 1]
     for row in history["epochs"]:
